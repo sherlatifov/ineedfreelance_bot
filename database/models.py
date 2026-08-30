@@ -33,9 +33,19 @@ class User(Base):
         nullable=True,
     )
 
+    # Текущий режим пользователя:
+    # freelancer / client
     role: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True,
+    )
+
+    # Язык интерфейса:
+    # ru / en
+    language: Mapped[str] = mapped_column(
+        String(2),
+        default="ru",
+        nullable=False,
     )
 
     created_at: Mapped[datetime] = mapped_column(

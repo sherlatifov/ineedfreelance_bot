@@ -6,6 +6,8 @@ from sqlalchemy import select
 from database.database import SessionLocal
 from database.models import User
 
+from locales import get_language, t
+
 from keyboards.start import role_keyboard
 from keyboards.freelancer import freelancer_menu
 from keyboards.client import client_menu
@@ -27,38 +29,56 @@ async def start_handler(message: Message):
 
         user = result.scalar_one_or_none()
 
-    # Новый пользователь
+    # ==========================================
+    # НОВЫЙ ПОЛЬЗОВАТЕЛЬ
+    # ==========================================
+
     if user is None:
 
+        language = get_language(
+            message.from_user.language_code
+        )
+
         await message.answer(
-            "👋 <b>Добро пожаловать в FreelanceHub!</b>\n\n"
-            "На нашей платформе вы можете одновременно "
-            "быть фрилансером и заказчиком.\n\n"
-            "Сейчас выберите режим, с которого хотите начать:",
+            t(language, "welcome"),
             parse_mode="HTML",
-            reply_markup=role_keyboard(),
+            reply_markup=role_keyboard(language),
         )
 
         return
 
-    # Пользователь уже существует
+    # ==========================================
+    # СУЩЕСТВУЮЩИЙ ПОЛЬЗОВАТЕЛЬ
+    # ==========================================
+
+    language = user.language or "ru"
 
     if user.role == "freelancer":
 
         await message.answer(
-            "👨‍💻 <b>Режим фрилансера</b>\n\n"
-            "Выберите действие:",
+            t(language, "freelancer_mode")
+            + "\n\n"
+            + t(language, "choose_action"),
             parse_mode="HTML",
-            reply_markup=freelancer_menu(),
+            reply_markup=freelancer_menu(language),
+        )
+
+    elif user.role == "client":
+
+        await message.answer(
+            t(language, "client_mode")
+            + "\n\n"
+            + t(language, "choose_action"),
+            parse_mode="HTML",
+            reply_markup=client_menu(language),
         )
 
     else:
 
         await message.answer(
-            "💼 <b>Режим заказчика</b>\n\n"
-            "Выберите действие:",
+            t(language, "welcome"),
             parse_mode="HTML",
-            reply_markup=client_menu(),
+            reply_markup=role_keyboard(language),
         )
 
 
@@ -77,18 +97,26 @@ async def select_role(callback: CallbackQuery):
 
         user = result.scalar_one_or_none()
 
+        # Новый пользователь
         if user is None:
+
+            language = get_language(
+                callback.from_user.language_code
+            )
 
             user = User(
                 telegram_id=callback.from_user.id,
                 username=callback.from_user.username,
                 first_name=callback.from_user.first_name,
                 role=role,
+                language=language,
             )
 
             session.add(user)
 
         else:
+
+            language = user.language or "ru"
 
             user.role = role
 
@@ -99,29 +127,29 @@ async def select_role(callback: CallbackQuery):
     if role == "freelancer":
 
         await callback.message.edit_text(
-            "👨‍💻 <b>Режим фрилансера</b>\n\n"
-            "Теперь вы можете искать работу, "
-            "отправлять отклики и работать над заказами.",
+            t(language, "freelancer_mode")
+            + "\n\n"
+            + t(language, "freelancer_description"),
             parse_mode="HTML",
         )
 
         await callback.message.answer(
-            "Выберите действие:",
-            reply_markup=freelancer_menu(),
+            t(language, "choose_action"),
+            reply_markup=freelancer_menu(language),
         )
 
     else:
 
         await callback.message.edit_text(
-            "💼 <b>Режим заказчика</b>\n\n"
-            "Теперь вы можете создавать заказы "
-            "и находить исполнителей.",
+            t(language, "client_mode")
+            + "\n\n"
+            + t(language, "client_description"),
             parse_mode="HTML",
         )
 
         await callback.message.answer(
-            "Выберите действие:",
-            reply_markup=client_menu(),
+            t(language, "choose_action"),
+            reply_markup=client_menu(language),
         )
 
 
@@ -143,7 +171,7 @@ async def switch_to_freelancer(
         if user is None:
 
             await callback.answer(
-                "Сначала выполните /start",
+                "User not found",
                 show_alert=True,
             )
 
@@ -151,17 +179,20 @@ async def switch_to_freelancer(
 
         user.role = "freelancer"
 
+        language = user.language or "ru"
+
         await session.commit()
 
     await callback.answer(
-        "Переключились на режим фрилансера"
+        t(language, "switched_to_freelancer")
     )
 
     await callback.message.edit_text(
-        "👨‍💻 <b>Режим фрилансера</b>\n\n"
-        "Выберите действие:",
+        t(language, "freelancer_mode")
+        + "\n\n"
+        + t(language, "choose_action"),
         parse_mode="HTML",
-        reply_markup=freelancer_menu(),
+        reply_markup=freelancer_menu(language),
     )
 
 
@@ -183,7 +214,7 @@ async def switch_to_client(
         if user is None:
 
             await callback.answer(
-                "Сначала выполните /start",
+                "User not found",
                 show_alert=True,
             )
 
@@ -191,15 +222,18 @@ async def switch_to_client(
 
         user.role = "client"
 
+        language = user.language or "ru"
+
         await session.commit()
 
     await callback.answer(
-        "Переключились на режим заказчика"
+        t(language, "switched_to_client")
     )
 
     await callback.message.edit_text(
-        "💼 <b>Режим заказчика</b>\n\n"
-        "Выберите действие:",
+        t(language, "client_mode")
+        + "\n\n"
+        + t(language, "choose_action"),
         parse_mode="HTML",
-        reply_markup=client_menu(),
+        reply_markup=client_menu(language),
     )

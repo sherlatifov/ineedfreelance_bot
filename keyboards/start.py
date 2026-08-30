@@ -1,17 +1,20 @@
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from locales import t
 
-def role_keyboard() -> InlineKeyboardMarkup:
+
+def role_keyboard(language: str) -> InlineKeyboardMarkup:
+
     builder = InlineKeyboardBuilder()
 
     builder.button(
-        text="👨‍💻 Я фрилансер",
+        text=t(language, "freelancer"),
         callback_data="role:freelancer",
     )
 
     builder.button(
-        text="💼 Я заказчик",
+        text=t(language, "client"),
         callback_data="role:client",
     )
 
