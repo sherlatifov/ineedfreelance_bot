@@ -63,11 +63,11 @@ class User(Base):
         cascade="all, delete-orphan", 
         )
 
-    # Freelance Profile
+# Freelance Profile
 
 class FreelancerProfile(Base): 
     __tablename__ = "freelancer_profiles" 
-    
+
     id: Mapped[int] = mapped_column(
         primary_key=True, 
         autoincrement=True, 

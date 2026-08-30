@@ -1,4 +1,4 @@
-from aiogram.types import InlineKeyboardMarkup
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from locales import t
@@ -48,3 +48,17 @@ def role_keyboard(
     builder.adjust(1)
 
     return builder.as_markup()
+
+def back_keyboard(language: str):
+    text = "⬅️ Назад" if language == "ru" else "⬅️ Back"
+
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=text,
+                    callback_data="back:main",
+                )
+            ]
+        ]
+    )

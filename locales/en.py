@@ -79,4 +79,6 @@ TEXTS = {
     "user_not_found": (
         "❌ User not found. Please use /start."
     ),
+
+    "back": "⬅️ Back",
 }
