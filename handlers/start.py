@@ -3,7 +3,7 @@ from aiogram.filters import CommandStart
 from aiogram.types import Message, CallbackQuery
 from sqlalchemy import select
 
-from database.database import async_session
+from database.database import SessionLocal
 from database.models import User
 
 from keyboards.start import role_keyboard
@@ -17,7 +17,7 @@ router = Router()
 @router.message(CommandStart())
 async def start_handler(message: Message):
 
-    async with async_session() as session:
+    async with SessionLocal() as session:
 
         result = await session.execute(
             select(User).where(
@@ -41,7 +41,7 @@ async def start_handler(message: Message):
 
         return
 
-    # Существующий пользователь
+    # Пользователь уже существует
 
     if user.role == "freelancer":
 
@@ -67,7 +67,7 @@ async def select_role(callback: CallbackQuery):
 
     role = callback.data.split(":")[1]
 
-    async with async_session() as session:
+    async with SessionLocal() as session:
 
         result = await session.execute(
             select(User).where(
@@ -130,7 +130,7 @@ async def switch_to_freelancer(
     callback: CallbackQuery,
 ):
 
-    async with async_session() as session:
+    async with SessionLocal() as session:
 
         result = await session.execute(
             select(User).where(
@@ -141,10 +141,12 @@ async def switch_to_freelancer(
         user = result.scalar_one_or_none()
 
         if user is None:
+
             await callback.answer(
                 "Сначала выполните /start",
                 show_alert=True,
             )
+
             return
 
         user.role = "freelancer"
@@ -168,7 +170,7 @@ async def switch_to_client(
     callback: CallbackQuery,
 ):
 
-    async with async_session() as session:
+    async with SessionLocal() as session:
 
         result = await session.execute(
             select(User).where(
@@ -179,10 +181,12 @@ async def switch_to_client(
         user = result.scalar_one_or_none()
 
         if user is None:
+
             await callback.answer(
                 "Сначала выполните /start",
                 show_alert=True,
             )
+
             return
 
         user.role = "client"
