@@ -1,32 +1,37 @@
 from aiogram.types import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
+from locales import t
 
-def freelancer_menu() -> InlineKeyboardMarkup:
+
+def freelancer_menu(
+    language: str,
+) -> InlineKeyboardMarkup:
+
     builder = InlineKeyboardBuilder()
 
     builder.button(
-        text="🔎 Найти работу",
+        text=t(language, "find_projects"),
         callback_data="freelancer:projects",
     )
 
     builder.button(
-        text="📋 Мои отклики",
+        text=t(language, "my_proposals"),
         callback_data="freelancer:proposals",
     )
 
     builder.button(
-        text="🤝 Мои сделки",
+        text=t(language, "my_contracts"),
         callback_data="freelancer:contracts",
     )
 
     builder.button(
-        text="👤 Мой профиль",
-        callback_data="profile",
+        text=t(language, "profile"),
+        callback_data="freelancer:profile",
     )
 
     builder.button(
-        text="🔄 Переключиться на заказчика",
+        text=t(language, "switch_client"),
         callback_data="switch:client",
     )
 
