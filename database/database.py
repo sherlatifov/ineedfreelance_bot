@@ -11,6 +11,8 @@ from database.models import Base
 engine = create_async_engine(
     DATABASE_URL,
     echo=False,
+    pool_pre_ping=True,
+    pool_recycle=1800,
 )
 
 
