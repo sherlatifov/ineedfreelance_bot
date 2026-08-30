@@ -1,4 +1,3 @@
-```python
 from locales import ru, en
 
 
@@ -45,4 +44,3 @@ def t(language: str, key: str) -> str:
         key,
         SUPPORTED_LANGUAGES["ru"].get(key, key),
     )
-```
