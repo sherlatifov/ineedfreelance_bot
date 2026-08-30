@@ -1,7 +1,7 @@
 from datetime import datetime
 
-from sqlalchemy import BigInteger, DateTime, String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import BigInteger, DateTime, String, ForeignKey, Integer, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -53,3 +53,70 @@ class User(Base):
         default=datetime.utcnow,
         nullable=False,
     )
+
+    freelancer_profile: Mapped[ 
+        "FreelancerProfile | None" 
+        ] = relationship(
+        "FreelancerProfile", 
+        back_populates="user", 
+        uselist=False, 
+        cascade="all, delete-orphan", 
+        )
+
+    # Freelance Profile
+
+    class FreelancerProfile(Base): 
+        __tablename__ = "freelancer_profiles" 
+        id: Mapped[int] = mapped_column(
+            primary_key=True, 
+            autoincrement=True, 
+        ) 
+        
+        user_id: Mapped[int] = mapped_column(
+            ForeignKey( "users.id", ondelete="CASCADE", ), 
+            unique=True, 
+            nullable=False, 
+            index=True, 
+        ) 
+        
+        user: Mapped[User] = relationship( 
+            "User", 
+            back_populates="freelancer_profile", 
+        ) 
+        
+        title: Mapped[str | None] = mapped_column( 
+            String(255), 
+            nullable=True, 
+        )  
+        
+        bio: Mapped[str | None] = mapped_column( 
+            Text, 
+            nullable=True, 
+        )
+        
+        skills: Mapped[str | None] = mapped_column( 
+            Text, 
+            nullable=True, 
+        )
+        
+        hourly_rate: Mapped[int | None] = mapped_column( 
+            Integer, 
+            nullable=True, 
+        )
+        
+        experience: Mapped[str | None] = mapped_column( 
+            String(100), 
+            nullable=True, 
+        )
+        created_at: Mapped[datetime] = mapped_column( 
+            DateTime, 
+            default=datetime.utcnow, 
+            nullable=False, 
+        )
+
+        updated_at: Mapped[datetime] = mapped_column( 
+            DateTime, 
+            default=datetime.utcnow, 
+            onupdate=datetime.utcnow, 
+            nullable=False, 
+        )
