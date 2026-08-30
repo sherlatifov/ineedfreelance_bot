@@ -1,4 +1,3 @@
-```python
 TEXTS = {
     # =========================
     # LANGUAGE
@@ -81,4 +80,3 @@ TEXTS = {
         "❌ User not found. Please use /start."
     ),
 }
-```
