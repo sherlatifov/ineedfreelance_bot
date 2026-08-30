@@ -1,3 +1,4 @@
+```python
 from locales import ru, en
 
 
@@ -9,7 +10,7 @@ SUPPORTED_LANGUAGES = {
 
 def get_language(language_code: str | None) -> str:
     """
-    Определяем язык Telegram.
+    Определяет поддерживаемый язык Telegram.
 
     ru     -> ru
     ru-RU  -> ru
@@ -32,7 +33,7 @@ def get_language(language_code: str | None) -> str:
 
 def t(language: str, key: str) -> str:
     """
-    Получить перевод.
+    Возвращает перевод.
     """
 
     texts = SUPPORTED_LANGUAGES.get(
@@ -44,3 +45,4 @@ def t(language: str, key: str) -> str:
         key,
         SUPPORTED_LANGUAGES["ru"].get(key, key),
     )
+```
