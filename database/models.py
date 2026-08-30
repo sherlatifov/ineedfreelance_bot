@@ -28,7 +28,7 @@ class User(Base):
         nullable=True,
     )
 
-    first_name: Mapped[str | None] = mapped_column(
+    display_name: Mapped[str | None] = mapped_column(
         String(255),
         nullable=True,
     )
