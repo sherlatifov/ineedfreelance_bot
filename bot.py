@@ -6,6 +6,7 @@ from aiogram import Bot, Dispatcher
 from config import BOT_TOKEN
 from database.database import init_db
 from handlers.start import router
+from handlers.profile import router as profile_router
 
 
 logging.basicConfig(
@@ -31,6 +32,7 @@ async def main():
 
     # Подключаем handlers
     dp.include_router(router)
+    dp.include_router(profile_router)
 
     logging.info("🤖 Бот успешно запущен!")
 
