@@ -3,7 +3,7 @@ from locales import ru, en
 
 SUPPORTED_LANGUAGES = {
     "ru": ru.TEXTS,
-    "en": en,
+    "en": en.TEXTS,
 }
 
 
