@@ -20,14 +20,14 @@ def get_language(language_code: str | None) -> str:
     """
 
     if not language_code:
-        return "ru"
+        return "en"
 
     language = language_code.lower().split("-")[0]
 
     if language in SUPPORTED_LANGUAGES:
         return language
 
-    return "ru"
+    return "en"
 
 
 def t(language: str, key: str) -> str:

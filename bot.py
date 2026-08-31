@@ -17,12 +17,10 @@ logging.basicConfig(
 
 async def main():
 
-    logging.info("🚀 Запускаем FreelanceHub...")
-
+    logging.info("🚀 Запускаем FreelanceJob...")
     # Создаём таблицы
     await init_db()
-
-    logging.info("🗄 База данных готова")
+    logging.info("База данных готова")
 
     bot = Bot(
         token=BOT_TOKEN
