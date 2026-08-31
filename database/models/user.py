@@ -67,8 +67,8 @@ class User(Base):
     )
     
     is_admin: Mapped[bool] = mapped_column(
-    default=False,
-    nullable=False,
+        default=False,
+        nullable=False,
     )
 
     freelancer_profile: Mapped[ 

@@ -34,6 +34,10 @@ def freelancer_menu(
         text=t(language, "switch_client"),
         callback_data="switch:client",
     )
+    
+    builder.button(
+        text="Админ-панель",
+    )
 
     builder.adjust(1)
 
