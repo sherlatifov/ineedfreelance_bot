@@ -37,6 +37,7 @@ def freelancer_menu(
     
     builder.button(
         text="Админ-панель",
+        callback_data="switch:freelancer",
     )
 
     builder.adjust(1)

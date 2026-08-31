@@ -35,6 +35,7 @@ def client_menu(language: str) -> InlineKeyboardMarkup:
 
     builder.button(
         text="Админ-панель",
+        callback_data="switch:freelancer",
     )
 
     builder.adjust(1)
