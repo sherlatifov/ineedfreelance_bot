@@ -3,6 +3,11 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .user import User
+
 class FreelancerProfile(Base): 
     __tablename__ = "freelancer_profiles" 
 
@@ -18,7 +23,7 @@ class FreelancerProfile(Base):
         index=True, 
     ) 
     
-    user: Mapped[User] = relationship( 
+    user: Mapped["User"] = relationship( 
         "User", 
         back_populates="freelancer_profile", 
     ) 
