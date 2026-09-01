@@ -6,9 +6,6 @@ from aiogram.types import CallbackQuery, Message
 
 from sqlalchemy import select
 
-from locales import t
-from keyboards.start import language_keyboard, role_keyboard
-
 from database.database import SessionLocal
 from database.models import User
 from database.repositories.user import (
@@ -17,12 +14,15 @@ from database.repositories.user import (
     update_username,
 )
 
+from keyboards.start import language_keyboard, role_keyboard
+from locales import t
+
 
 router = Router()
 
 
 # ============================================================
-# СОСТОЯНИЯ РЕГИСТРАЦИИ
+# REGISTRATION STATES
 # ============================================================
 
 class RegistrationState(StatesGroup):
@@ -54,7 +54,7 @@ async def start_handler(
 
         return
 
-    # Обновляем Telegram username
+    # Обновляем username
     await update_username(
         telegram_id,
         message.from_user.username,
@@ -77,7 +77,7 @@ async def start_handler(
 
         return
 
-    # Пользователь уже зарегистрирован.
+    # Пользователь уже зарегистрирован
     await message.answer(
         t(language, "choose_role"),
         parse_mode="HTML",
@@ -86,7 +86,7 @@ async def start_handler(
 
 
 # ============================================================
-# ВЫБОР ЯЗЫКА
+# LANGUAGE
 # ============================================================
 
 @router.callback_query(F.data.startswith("language:"))
@@ -105,32 +105,36 @@ async def select_language(
 
     telegram_id = callback.from_user.id
 
-    user = await get_user(telegram_id)
+    # ========================================================
+    # ВАЖНО:
+    # Получаем пользователя и изменяем его
+    # в ОДНОЙ сессии.
+    # ========================================================
 
-    # Создаём пользователя
-    if user is None:
-        await create_user(
-            telegram_id=telegram_id,
-            username=callback.from_user.username,
-            language=language,
+    async with SessionLocal() as session:
+
+        result = await session.execute(
+            select(User).where(
+                User.telegram_id == telegram_id
+            )
         )
 
-    # Пользователь уже существует — обновляем язык
-    else:
-        async with SessionLocal() as session:
-            result = await session.execute(
-                select(User).where(
-                    User.telegram_id == telegram_id
-                )
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            user = User(
+                telegram_id=telegram_id,
+                username=callback.from_user.username,
+                language=language,
             )
 
-            user = result.scalar_one_or_none()
+            session.add(user)
 
-            if user is not None:
-                user.language = language
-                user.username = callback.from_user.username
+        else:
+            user.language = language
+            user.username = callback.from_user.username
 
-                await session.commit()
+        await session.commit()
 
     await callback.answer()
 
@@ -150,7 +154,7 @@ async def select_language(
 
 
 # ============================================================
-# ВВОД ИМЕНИ
+# DISPLAY NAME
 # ============================================================
 
 @router.message(
@@ -168,29 +172,55 @@ async def process_display_name(
 
     display_name = message.text.strip()
 
+    # ========================================================
+    # Проверка длины
+    # ========================================================
+
     if len(display_name) < 2:
-        user = await get_user(message.from_user.id)
-        language = user.language if user and user.language else "ru"
+
+        user = await get_user(
+            message.from_user.id
+        )
+
+        language = (
+            user.language
+            if user and user.language
+            else "ru"
+        )
 
         await message.answer(
             t(language, "display_name_too_short")
         )
+
         return
 
     if len(display_name) > 255:
-        user = await get_user(message.from_user.id)
-        language = user.language if user and user.language else "ru"
+
+        user = await get_user(
+            message.from_user.id
+        )
+
+        language = (
+            user.language
+            if user and user.language
+            else "ru"
+        )
 
         await message.answer(
             t(language, "display_name_too_long")
         )
+
         return
 
     telegram_id = message.from_user.id
 
-    # ВАЖНО:
-    # получаем User и изменяем его
-    # в ОДНОЙ И ТОЙ ЖЕ сессии.
+    # ========================================================
+    # КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ
+    #
+    # Получаем User внутри этой же сессии,
+    # в которой будем сохранять display_name.
+    # ========================================================
+
     async with SessionLocal() as session:
 
         result = await session.execute(
@@ -212,10 +242,15 @@ async def process_display_name(
 
         language = user.language or "ru"
 
+        # Сохраняем данные
         user.display_name = display_name
         user.username = message.from_user.username
 
         await session.commit()
+
+    # ========================================================
+    # Регистрация имени закончена
+    # ========================================================
 
     await state.clear()
 
