@@ -476,7 +476,7 @@ async def select_role(
     # ЗАКАЗЧИК
     # ========================================================
 
-    await callback.message.edit_text(
+    await callback.message.answer(
         t(language, "client_mode")
         + "\n\n"
         + t(language, "client_description"),
@@ -536,7 +536,7 @@ async def switch_to_freelancer(
         t(language, "switched_to_freelancer")
     )
 
-    await callback.message.edit_text(
+    await callback.message.answer(
         t(language, "freelancer_mode")
         + "\n\n"
         + t(language, "choose_action"),
@@ -590,7 +590,7 @@ async def switch_to_client(
         t(language, "switched_to_client")
     )
 
-    await callback.message.edit_text(
+    await callback.message.answer(
         t(language, "client_mode")
         + "\n\n"
         + t(language, "choose_action"),
