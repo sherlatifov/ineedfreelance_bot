@@ -54,7 +54,7 @@ async def select_role(callback: CallbackQuery):
         user.role = role
 
         language = user.language or "ru"
-        is_admin = user.is_admin
+        is_admin = bool(user.is_admin)
 
         await session.commit()
 

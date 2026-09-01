@@ -16,6 +16,20 @@ async def get_user(telegram_id: int) -> User | None:
         )
 
         return result.scalar_one_or_none()
+        
+        if user is None:
+            return None
+
+        # Синхронизируем статус администратора
+        should_be_admin = (
+            telegram_id == ADMIN_TELEGRAM_ID
+        )
+
+        if user.is_admin != should_be_admin:
+            user.is_admin = should_be_admin
+            await session.commit()
+
+        return user
 
 async def create_user(
     telegram_id: int,
