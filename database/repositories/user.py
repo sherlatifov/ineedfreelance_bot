@@ -52,6 +52,8 @@ async def get_user(
 
             await session.commit()
 
+            await session.refresh(user)
+
         return user
 
 
@@ -203,3 +205,83 @@ async def update_display_name(
         await session.refresh(user)
 
         return user
+
+# ============================================================
+# UPDATE ROLE
+# ============================================================
+
+async def update_role(
+    telegram_id: int,
+    role: str,
+) -> User | None:
+    """
+    Изменяет текущий режим пользователя.
+
+    Допустимые значения:
+
+        freelancer
+        client
+    """
+
+    if role not in (
+        "freelancer",
+        "client",
+    ):
+        raise ValueError(
+            f"Invalid role: {role}"
+        )
+
+    async with SessionLocal() as session:
+
+        result = await session.execute(
+            select(User).where(
+                User.telegram_id == telegram_id
+            )
+        )
+
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            return None
+
+        user.role = role
+
+        await session.commit()
+
+        await session.refresh(user)
+
+        return user
+
+# ============================================================
+# IS ADMIN
+# ============================================================
+
+def is_admin(
+    telegram_id: int,
+) -> bool:
+    """
+    Проверяет администратора напрямую по Telegram ID.
+
+    Это не зависит от значения is_admin в PostgreSQL.
+
+    Главный администратор определяется через:
+
+        ADMIN_TELEGRAM_ID
+    """
+
+    return telegram_id == ADMIN_TELEGRAM_ID
+
+# ============================================================
+# GET ADMIN STATUS
+# ============================================================
+
+async def get_admin_status(
+    telegram_id: int,
+) -> bool:
+    """
+    Возвращает актуальный статус администратора.
+
+    Проверка выполняется по Telegram ID.
+    """
+
+    return is_admin(telegram_id)
