@@ -5,9 +5,19 @@ from database.database import SessionLocal
 from database.models import User
 
 
-async def get_user(telegram_id: int) -> User | None:
+# ============================================================
+# GET USER
+# ============================================================
+
+async def get_user(
+    telegram_id: int,
+) -> User | None:
 
     async with SessionLocal() as session:
+
+        # ----------------------------------------------------
+        # Ищем пользователя
+        # ----------------------------------------------------
 
         result = await session.execute(
             select(User).where(
@@ -15,21 +25,39 @@ async def get_user(telegram_id: int) -> User | None:
             )
         )
 
-        return result.scalar_one_or_none()
-        
+        user = result.scalar_one_or_none()
+
+        # ----------------------------------------------------
+        # Пользователь не найден
+        # ----------------------------------------------------
+
         if user is None:
             return None
 
-        # Синхронизируем статус администратора
+        # ====================================================
+        # Проверяем администратора по Telegram ID
+        # ====================================================
+
         should_be_admin = (
             telegram_id == ADMIN_TELEGRAM_ID
         )
 
+        # ----------------------------------------------------
+        # Если статус изменился — сохраняем его
+        # ----------------------------------------------------
+
         if user.is_admin != should_be_admin:
+
             user.is_admin = should_be_admin
+
             await session.commit()
 
         return user
+
+
+# ============================================================
+# CREATE USER
+# ============================================================
 
 async def create_user(
     telegram_id: int,
@@ -39,21 +67,47 @@ async def create_user(
 
     async with SessionLocal() as session:
 
+        # ----------------------------------------------------
+        # Определяем администратора
+        # ----------------------------------------------------
+
+        is_admin = (
+            telegram_id == ADMIN_TELEGRAM_ID
+        )
+
+        # ----------------------------------------------------
+        # Создаём пользователя
+        # ----------------------------------------------------
+
         user = User(
             telegram_id=telegram_id,
             username=username,
             language=language,
-            is_admin=(
-                telegram_id == ADMIN_TELEGRAM_ID
-            ),
+            display_name=None,
+            role=None,
+            is_admin=is_admin,
         )
 
         session.add(user)
 
+        # ----------------------------------------------------
+        # Сохраняем в PostgreSQL
+        # ----------------------------------------------------
+
         await session.commit()
+
+        # ----------------------------------------------------
+        # Получаем актуальные данные из БД
+        # ----------------------------------------------------
+
         await session.refresh(user)
 
         return user
+
+
+# ============================================================
+# UPDATE USERNAME
+# ============================================================
 
 async def update_username(
     telegram_id: int,
@@ -72,9 +126,80 @@ async def update_username(
 
         if user is None:
             return None
+        
+        # ----------------------------------------------------
+        # Обновляем username
+        # ----------------------------------------------------
 
         user.username = username
 
         await session.commit()
+        await session.refresh(user)
+
+        return user
+
+# ============================================================
+# UPDATE LANGUAGE
+# ============================================================
+
+async def update_language(
+    telegram_id: int,
+    language: str,
+) -> User | None:
+
+    async with SessionLocal() as session:
+
+        result = await session.execute(
+            select(User).where(
+                User.telegram_id == telegram_id
+            )
+        )
+
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            return None
+
+        # ----------------------------------------------------
+        # Сохраняем язык
+        # ----------------------------------------------------
+
+        user.language = language
+
+        await session.commit()
+        await session.refresh(user)
+
+        return user
+
+# ============================================================
+# UPDATE DISPLAY NAME
+# ============================================================
+
+async def update_display_name(
+    telegram_id: int,
+    display_name: str,
+) -> User | None:
+
+    async with SessionLocal() as session:
+
+        result = await session.execute(
+            select(User).where(
+                User.telegram_id == telegram_id
+            )
+        )
+
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            return None
+
+        # ----------------------------------------------------
+        # Сохраняем имя
+        # ----------------------------------------------------
+
+        user.display_name = display_name
+
+        await session.commit()
+        await session.refresh(user)
 
         return user

@@ -2,17 +2,38 @@ import os
 
 from dotenv import load_dotenv
 
+# ============================================================
+# ENVIRONMENT
+# ============================================================
 
+# Загружаем переменные из .env
 load_dotenv()
 
+# ============================================================
+# TELEGRAM BOT
+# ============================================================
 
+# Токен Telegram-бота
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-DATABASE_URL = os.getenv("DATABASE_URL")
-ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID"))
 
 if not BOT_TOKEN:
-    raise ValueError("BOT_TOKEN не найден")
+    raise RuntimeError(
+        "BOT_TOKEN is not set"
+    )
 
+# ============================================================
+# DATABASE
+# ============================================================
+
+# PostgreSQL connection string
+DATABASE_URL = os.getenv("DATABASE_URL")
 
 if not DATABASE_URL:
-    raise ValueError("DATABASE_URL не найден")
+    raise RuntimeError(
+        "DATABASE_URL is not set"
+    )
+
+# ============================================================
+# ADMIN
+# ============================================================
+ADMIN_TELEGRAM_ID = int(os.getenv("ADMIN_TELEGRAM_ID", "0"))
