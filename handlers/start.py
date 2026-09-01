@@ -180,44 +180,44 @@ async def select_language(
         # ПОЛЬЗОВАТЕЛЬ УЖЕ СУЩЕСТВУЕТ
         # ========================================================
 
-        else:
-            user = await update_language(
-                telegram_id=telegram_id,
-                language=language,
-            )
+    else:
+        user = await update_language(
+            telegram_id=telegram_id,
+            language=language,
+        )
     
         # ========================================================
         # Закрываем callback
         # ========================================================
 
-        await callback.answer()
+    await callback.answer()
 
-        # ========================================================
-        # Сообщаем о выбранном языке
-        # ========================================================
-        
-        await callback.message.answer(
-            t(language, "language_selected"),
-            parse_mode="HTML",
-        )
+    # ========================================================
+    # Сообщаем о выбранном языке
+    # ========================================================
+    
+    await callback.message.answer(
+        t(language, "language_selected"),
+        parse_mode="HTML",
+    )
 
-        # ========================================================
-        # Просим имя
-        # ========================================================
+    # ========================================================
+    # Просим имя
+    # ========================================================
 
-        await callback.message.answer(
-            t(language, "enter_display_name"),
-            parse_mode="HTML",
-        )
+    await callback.message.answer(
+        t(language, "enter_display_name"),
+        parse_mode="HTML",
+    )
 
-        # ========================================================
-        # FSM:
-        # ждём текст с именем
-        # ========================================================
+    # ========================================================
+    # FSM:
+    # ждём текст с именем
+    # ========================================================
 
-        await state.set_state(
-            RegistrationState.waiting_for_display_name
-        )
+    await state.set_state(
+        RegistrationState.waiting_for_display_name
+    )
 
 # ============================================================
 # DISPLAY NAME
