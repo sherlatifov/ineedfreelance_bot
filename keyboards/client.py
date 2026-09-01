@@ -33,9 +33,12 @@ def client_menu(language: str) -> InlineKeyboardMarkup:
         callback_data="switch:freelancer",
     )
 
-    builder.button(
-        text="Админ-панель",
-        callback_data="switch:freelancer",
+    if user.is_admin:
+    keyboard.add(
+        InlineKeyboardButton(
+            text="👑 Админ-панель",
+            callback_data="admin:panel",
+        )
     )
 
     builder.adjust(1)

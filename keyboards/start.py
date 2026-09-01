@@ -3,11 +3,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from locales import t
 
-
+# Клавиатура выбора языка.
 def language_keyboard() -> InlineKeyboardMarkup:
-    """
-    Клавиатура выбора языка.
-    """
 
     builder = InlineKeyboardBuilder()
 
@@ -25,13 +22,10 @@ def language_keyboard() -> InlineKeyboardMarkup:
 
     return builder.as_markup()
 
-
+# Клавиатура выбора текущего режима.
 def role_keyboard(
     language: str,
 ) -> InlineKeyboardMarkup:
-    """
-    Клавиатура выбора текущего режима.
-    """
 
     builder = InlineKeyboardBuilder()
 

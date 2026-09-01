@@ -35,9 +35,12 @@ def freelancer_menu(
         callback_data="switch:client",
     )
     
-    builder.button(
-        text="Админ-панель",
-        callback_data="switch:freelancer",
+    if user.is_admin:
+    keyboard.add(
+        InlineKeyboardButton(
+            text="👑 Админ-панель",
+            callback_data="admin:panel",
+        )
     )
 
     builder.adjust(1)
