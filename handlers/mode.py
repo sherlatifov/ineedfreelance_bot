@@ -124,109 +124,57 @@ async def show_mode(
         telegram_id
     )
 
-    # ========================================================
-    # Закрываем callback
-    # ========================================================
-
-    await callback.answer()
-
-    # ========================================================
-    # FREELANCER
-    # ========================================================
-
-    if role == "freelancer":
-
-        await callback.message.answer(
-            t(
-                language,
-                "freelancer_mode",
-            ),
-            parse_mode="HTML",
-        )
-
-        await callback.message.answer(
-            t(
-                language,
-                "choose_action",
-            ),
-            reply_markup=freelancer_menu(
+    # ======================================================== 
+    # Формируем текст и клавиатуру 
+    # ======================================================== 
+    if role == "freelancer": 
+        text = ( 
+            t( 
+                language, 
+                "freelancer_mode", 
+            ) 
+            + "\n\n" 
+            + t( 
+                language, 
+                "choose_action", 
+                ) 
+            ) 
+            
+            keyboard = freelancer_menu(
                 language=language,
-                is_admin=admin,
-            ),
-        )
-
-        return
-    
-    # ========================================================
-    # CLIENT
-    # ========================================================
-
-    await callback.message.answer(
-        t(
-            language,
-            "client_mode",
-        ),
-        parse_mode="HTML",
-    )
-
-    await callback.message.answer(
-        t(
-            language,
-            "choose_action",
-        ),
-        reply_markup=client_menu(
-            language=language,
-            is_admin=admin,
-        ),
-    )
-
-# ============================================================
-# INITIAL ROLE SELECTION
-# ============================================================
-
-@router.callback_query(
-    F.data.startswith("role:")
-)
-async def select_role(
-    callback: CallbackQuery,
-):
-    """
-    Первоначальный выбор режима.
-    """
-
-    role = callback.data.split(
-        ":",
-        1,
-    )[1]
-
-    await show_mode(
-        callback=callback,
-        role=role,
-    )
-
-# ============================================================
-# SWITCH MODE
-# ============================================================
-
-@router.callback_query(
-    F.data.startswith("switch:")
-)
-async def switch_mode(
-    callback: CallbackQuery,
-):
-    """
-    Переключение режима.
-
-    freelancer → client
-    client → freelancer
-    """
-
-    role = callback.data.split(
-        ":",
-        1,
-    )[1]
-
-    await show_mode(
-        callback=callback,
-        role=role,
-    )
+                is_admin=admin, 
+            ) 
+    else: 
+        text = ( 
+            t(
+                language,
+                "client_mode", 
+            )
+            + "\n\n" 
+            + t( 
+                language, 
+                "choose_action", 
+                ) 
+            ) 
+        
+        keyboard = client_menu(
+            language=language, 
+            is_admin=admin, 
+        ) 
+        # ======================================================== 
+        # Закрываем callback 
+        # ======================================================== 
+        
+        await callback.answer() 
+        
+        # ======================================================== 
+        # РЕДАКТИРУЕМ ТЕКУЩЕЕ СООБЩЕНИЕ 
+        # ======================================================== 
+        
+        if callback.message:
+            
+            await callback.message.edit_text( 
+                text=text, 
+                parse_mode="HTML", 
+                reply_markup=keyboard, 
+            )
