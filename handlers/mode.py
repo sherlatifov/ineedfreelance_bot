@@ -1,5 +1,6 @@
 from aiogram import F, Router
 from aiogram.types import CallbackQuery
+
 from sqlalchemy import select
 
 from database.database import SessionLocal
@@ -51,11 +52,17 @@ async def select_role(callback: CallbackQuery):
             return
 
         user.role = role
+
         language = user.language or "ru"
+        is_admin = user.is_admin
 
         await session.commit()
 
     await callback.answer()
+
+    # ========================================================
+    # FREELANCER
+    # ========================================================
 
     if role == "freelancer":
 
@@ -66,10 +73,17 @@ async def select_role(callback: CallbackQuery):
 
         await callback.message.answer(
             t(language, "choose_action"),
-            reply_markup=freelancer_menu(language),
+            reply_markup=freelancer_menu(
+                language,
+                is_admin=is_admin,
+            ),
         )
 
         return
+
+    # ========================================================
+    # CLIENT
+    # ========================================================
 
     await callback.message.edit_text(
         t(language, "client_mode"),

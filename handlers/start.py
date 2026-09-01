@@ -4,32 +4,42 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.types import CallbackQuery, Message
 
+from sqlalchemy import select
+
 from locales import t
 from keyboards.start import language_keyboard, role_keyboard
 
+from database.database import SessionLocal
+from database.models import User
 from database.repositories.user import (
     create_user,
     get_user,
     update_username,
 )
 
+
 router = Router()
+
 
 # ============================================================
 # СОСТОЯНИЯ РЕГИСТРАЦИИ
 # ============================================================
+
 class RegistrationState(StatesGroup):
     waiting_for_display_name = State()
+
 
 # ============================================================
 # /start
 # ============================================================
+
 @router.message(CommandStart())
 async def start_handler(
     message: Message,
     state: FSMContext,
 ):
     telegram_id = message.from_user.id
+
     user = await get_user(telegram_id)
 
     # Новый пользователь
@@ -68,13 +78,16 @@ async def start_handler(
         return
 
     # Пользователь уже зарегистрирован.
-    # Дальше управление передаём mode.py.
     await message.answer(
         t(language, "choose_role"),
         parse_mode="HTML",
         reply_markup=role_keyboard(language),
     )
 
+
+# ============================================================
+# ВЫБОР ЯЗЫКА
+# ============================================================
 
 @router.callback_query(F.data.startswith("language:"))
 async def select_language(
@@ -94,23 +107,30 @@ async def select_language(
 
     user = await get_user(telegram_id)
 
-    # Создаём User после выбора языка
+    # Создаём пользователя
     if user is None:
-        user = await create_user(
+        await create_user(
             telegram_id=telegram_id,
             username=callback.from_user.username,
             language=language,
         )
+
+    # Пользователь уже существует — обновляем язык
     else:
-        # Если пользователь уже существует,
-        # просто обновляем язык
-        from database.database import SessionLocal
-
         async with SessionLocal() as session:
-            user.language = language
-            user.username = callback.from_user.username
+            result = await session.execute(
+                select(User).where(
+                    User.telegram_id == telegram_id
+                )
+            )
 
-            await session.commit()
+            user = result.scalar_one_or_none()
+
+            if user is not None:
+                user.language = language
+                user.username = callback.from_user.username
+
+                await session.commit()
 
     await callback.answer()
 
@@ -129,6 +149,10 @@ async def select_language(
     )
 
 
+# ============================================================
+# ВВОД ИМЕНИ
+# ============================================================
+
 @router.message(
     RegistrationState.waiting_for_display_name
 )
@@ -144,34 +168,50 @@ async def process_display_name(
 
     display_name = message.text.strip()
 
-    user = await get_user(message.from_user.id)
-
-    if user is None:
-        await state.clear()
-
-        await message.answer(
-            "Please use /start"
-        )
-
-        return
-
-    language = user.language or "ru"
-
     if len(display_name) < 2:
+        user = await get_user(message.from_user.id)
+        language = user.language if user and user.language else "ru"
+
         await message.answer(
             t(language, "display_name_too_short")
         )
         return
 
     if len(display_name) > 255:
+        user = await get_user(message.from_user.id)
+        language = user.language if user and user.language else "ru"
+
         await message.answer(
             t(language, "display_name_too_long")
         )
         return
 
-    from database.database import SessionLocal
+    telegram_id = message.from_user.id
 
+    # ВАЖНО:
+    # получаем User и изменяем его
+    # в ОДНОЙ И ТОЙ ЖЕ сессии.
     async with SessionLocal() as session:
+
+        result = await session.execute(
+            select(User).where(
+                User.telegram_id == telegram_id
+            )
+        )
+
+        user = result.scalar_one_or_none()
+
+        if user is None:
+            await state.clear()
+
+            await message.answer(
+                "Please use /start"
+            )
+
+            return
+
+        language = user.language or "ru"
+
         user.display_name = display_name
         user.username = message.from_user.username
 

@@ -6,6 +6,7 @@ from locales import t
 
 def freelancer_menu(
     language: str,
+    is_admin: bool = False,
 ) -> InlineKeyboardMarkup:
 
     builder = InlineKeyboardBuilder()
@@ -34,13 +35,11 @@ def freelancer_menu(
         text=t(language, "switch_client"),
         callback_data="switch:client",
     )
-    
-    if user.is_admin:
-        keyboard.add(
-            InlineKeyboardButton(
-                text="👑 Админ-панель",
-                callback_data="admin:panel",
-            )
+
+    if is_admin:
+        builder.button(
+            text="👑 Админ-панель",
+            callback_data="admin:panel",
         )
 
     builder.adjust(1)
