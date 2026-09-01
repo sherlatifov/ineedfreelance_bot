@@ -1,108 +1,97 @@
 from aiogram import F, Router
-from aiogram.types import CallbackQuery
+from aiogram.types import CallbackQuery, Message
 
+from database.repositories.freelancer_profile import (
+    get_or_create_freelancer_profile,
+)
 from database.repositories.user import get_user
 from keyboards.profile import freelancer_profile_keyboard
 
 
-# Router этого конкретного раздела.
 router = Router()
+
+
+async def build_freelancer_profile_text(
+    user_id: int,
+) -> tuple[str, object] | None:
+    """
+    Собирает текст профиля фрилансера
+    и клавиатуру.
+
+    Возвращает:
+        (text, keyboard)
+    """
+
+    user = await get_user(user_id)
+
+    if user is None:
+        return None
+
+    profile = await get_or_create_freelancer_profile(
+        user_id=user.id,
+    )
+
+    language = user.language or "ru"
+
+    display_name = user.display_name or "Не указано"
+
+    title = profile.title or "Пока не указан"
+
+    bio = profile.bio or "Пока не указано"
+
+    skills = profile.skills or "Пока не указаны"
+
+    if profile.hourly_rate is not None:
+        rate = f"{profile.hourly_rate} € / час"
+    else:
+        rate = "Пока не указана"
+
+    text = (
+        f"👨‍💻 <b>{display_name}</b>\n\n"
+        f"💻 <b>{title}</b>\n\n"
+        f"⭐ Рейтинг: —\n"
+        f"💬 Отзывы: 0\n"
+        f"✅ Заказов выполнено: 0\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n\n"
+        f"📝 <b>О себе</b>\n"
+        f"{bio}\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n\n"
+        f"🛠 <b>Навыки</b>\n"
+        f"{skills}\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n\n"
+        f"💰 <b>Ставка</b>\n"
+        f"{rate}"
+    )
+
+    keyboard = freelancer_profile_keyboard(
+        language=language,
+    )
+
+    return text, keyboard
 
 
 async def show_freelancer_profile(
     callback: CallbackQuery,
 ) -> None:
     """
-    Показывает профиль текущего пользователя.
-
-    Эта функция является общей функцией отображения профиля.
-
-    Её смогут использовать:
-        - кнопка "Мой профиль";
-        - сохранение Title;
-        - сохранение Bio;
-        - сохранение навыков;
-        - сохранение ставки;
-        - и т.д.
+    Показывает профиль после callback-запроса.
     """
 
-    # Получаем Telegram ID пользователя.
-    telegram_id = callback.from_user.id
+    result = await build_freelancer_profile_text(
+        user_id=callback.from_user.id,
+    )
 
-    # Получаем пользователя из базы данных.
-    user = await get_user(telegram_id)
-
-    # Если пользователь не найден,
-    # показываем сообщение об ошибке.
-    if user is None:
+    if result is None:
         await callback.answer(
             "Пользователь не найден.",
             show_alert=True,
         )
         return
 
-    # Получаем язык пользователя.
-    language = user.language or "ru"
+    text, keyboard = result
 
-    # ---------------------------------------------------------
-    # ОСНОВНАЯ ИНФОРМАЦИЯ
-    # ---------------------------------------------------------
-
-    # Имя берём из таблицы users.
-    display_name = user.display_name or "Не указано"
-
-    # ---------------------------------------------------------
-    # ВРЕМЕННЫЕ ЗНАЧЕНИЯ
-    # ---------------------------------------------------------
-    #
-    # Сейчас системы отзывов и заказов ещё нет.
-    #
-    # Поэтому временно показываем:
-    #
-    # рейтинг     → —
-    # отзывы      → 0
-    # заказов     → 0
-    #
-    # Позже эти данные будут приходить из БД.
-
-    rating = "—"
-    reviews_count = 0
-    completed_orders = 0
-
-    # ---------------------------------------------------------
-    # ФОРМИРУЕМ ПРОФИЛЬ
-    # ---------------------------------------------------------
-
-    text = (
-        f"👨‍💻 <b>Мой профиль</b>\n\n"
-        f"👨‍💻 <b>{display_name}</b>\n\n"
-        f"⭐ Рейтинг: {rating}\n"
-        f"💬 Отзывы: {reviews_count}\n"
-        f"✅ Заказов выполнено: {completed_orders}\n\n"
-        f"━━━━━━━━━━━━━━━━━━\n\n"
-        f"💻 <b>Title</b>\n"
-        f"Пока не указан\n\n"
-        f"━━━━━━━━━━━━━━━━━━\n\n"
-        f"📝 <b>О себе</b>\n"
-        f"Пока не указано\n\n"
-        f"━━━━━━━━━━━━━━━━━━\n\n"
-        f"🛠 <b>Навыки</b>\n"
-        f"Пока не указаны\n\n"
-        f"━━━━━━━━━━━━━━━━━━\n\n"
-        f"💰 <b>Ставка</b>\n"
-        f"Пока не указана"
-    )
-
-    # Создаём клавиатуру профиля.
-    keyboard = freelancer_profile_keyboard(
-        language=language,
-    )
-
-    # Убираем индикатор загрузки Telegram.
     await callback.answer()
 
-    # Если сообщение доступно,
-    # редактируем его вместо отправки нового.
     if callback.message:
         await callback.message.edit_text(
             text=text,
@@ -111,20 +100,36 @@ async def show_freelancer_profile(
         )
 
 
-# =============================================================
-# ОТКРЫТИЕ ПРОФИЛЯ
-# =============================================================
+async def show_freelancer_profile_from_message(
+    message: Message,
+) -> None:
+    """
+    Показывает профиль после обычного Message.
+
+    Используется после сохранения данных через FSM.
+    """
+
+    result = await build_freelancer_profile_text(
+        user_id=message.from_user.id,
+    )
+
+    if result is None:
+        await message.answer(
+            "❌ Пользователь не найден."
+        )
+        return
+
+    text, keyboard = result
+
+    await message.answer(
+        text=text,
+        parse_mode="HTML",
+        reply_markup=keyboard,
+    )
+
 
 @router.callback_query(F.data == "freelancer:profile")
 async def freelancer_profile(
     callback: CallbackQuery,
 ):
-    """
-    Обработчик кнопки:
-
-        👤 Мой профиль
-
-    из меню фрилансера.
-    """
-
     await show_freelancer_profile(callback)
