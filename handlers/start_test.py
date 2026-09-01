@@ -36,11 +36,11 @@ class RegistrationState(StatesGroup):
 # ============================================================
 
 
-@router.message(CommandStart())
-async def start_handler(
-    message: Message,
-    state: FSMContext,
-):
+    @router.message(CommandStart())
+    async def start_handler(
+        message: Message,
+        state: FSMContext,
+    ):
     """
     Основная точка входа пользователя.
 
