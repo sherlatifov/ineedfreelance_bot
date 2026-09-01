@@ -1,79 +1,70 @@
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import CallbackQuery, Message
 
 from database.repositories.freelancer_profile import (
     get_or_create_freelancer_profile,
     update_freelancer_title,
 )
-
 from database.repositories.user import get_user
-from handlers.profile.main import show_freelancer_profile
+from handlers.profile.main import show_freelancer_profile_from_message
 
-# Router раздела Title.
+
 router = Router()
 
 
 class TitleStates(StatesGroup):
     """
-    Состояния, связанные только с редактированием Title.
+    FSM-состояния для редактирования Title.
     """
 
     waiting_for_title = State()
 
-# =============================================================
-# ИЗМЕНЕНИЕ TITLE
-# =============================================================
 
 @router.callback_query(F.data == "profile:edit_title")
 async def edit_profile_title(
     callback: CallbackQuery,
     state: FSMContext,
 ):
-        """
-        Начало изменения профессионального Title.
+    """
+    Начинает редактирование Title.
 
-        Следующим этапом сюда добавим FSM.
+    Пользователь нажимает:
+    💻 Изменить Title
 
-        Сценарий будет:
+    После этого бот ждёт текстовое сообщение.
+    """
 
-        💻 Изменить Title
-                ↓
-        FSM
-                ↓
-        Введите Title
-                ↓
-        Python Backend Developer
-                ↓
-        PostgreSQL
-                ↓
-        профиль
-        """
-user = await get_user(callback.from_user.id)
-    
-        if user is None:
-                await callback.answer(
-                "Пользователь не найден.",
-                show_alert=True,
-                )
-                return
-        
-        await state.set_state(
-                TitleStates.waiting_for_title
+    user = await get_user(
+        callback.from_user.id
+    )
+
+    if user is None:
+        await callback.answer(
+            "Пользователь не найден.",
+            show_alert=True,
+        )
+        return
+
+    # Переводим пользователя в состояние
+    # ожидания нового Title.
+    await state.set_state(
+        TitleStates.waiting_for_title
+    )
+
+    await callback.answer()
+
+    if callback.message:
+        await callback.message.edit_text(
+            "💻 <b>Изменение Title</b>\n\n"
+            "Введите ваш профессиональный Title.\n\n"
+            "Например:\n"
+            "<code>Python Backend Developer</code>\n\n"
+            "Максимум — 255 символов.",
+            parse_mode="HTML",
         )
 
-        await callback.answer()
-
-        if callback.message:
-                await callback.message.edit_text(
-                        "💻 <b>Изменение Title</b>\n\n"
-                        "Введите ваш профессиональный Title.\n\n"
-                        "Например:\n"
-                        "<code>Python Backend Developer</code>\n\n"
-                        "Максимум — 255 символов.",
-                        parse_mode="HTML",
-                )
 
 @router.message(TitleStates.waiting_for_title)
 async def process_profile_title(
@@ -81,10 +72,11 @@ async def process_profile_title(
     state: FSMContext,
 ):
     """
-    Получаем Title от пользователя,
-    проверяем и сохраняем его в БД.
+    Получает новый Title от пользователя,
+    проверяет его и сохраняет в PostgreSQL.
     """
 
+    # Проверяем, что пользователь отправил текст.
     if not message.text:
         await message.answer(
             "❌ Пожалуйста, отправьте Title "
@@ -92,9 +84,10 @@ async def process_profile_title(
         )
         return
 
+    # Убираем пробелы в начале и конце.
     title = message.text.strip()
 
-    # Минимальная длина Title.
+    # Проверяем минимальную длину.
     if len(title) < 2:
         await message.answer(
             "❌ Title слишком короткий.\n\n"
@@ -102,8 +95,7 @@ async def process_profile_title(
         )
         return
 
-    # Максимальная длина соответствует
-    # String(255) в модели FreelancerProfile.
+    # Проверяем максимальную длину.
     if len(title) > 255:
         await message.answer(
             "❌ Title слишком длинный.\n\n"
@@ -111,6 +103,7 @@ async def process_profile_title(
         )
         return
 
+    # Получаем пользователя.
     user = await get_user(
         message.from_user.id
     )
@@ -124,12 +117,13 @@ async def process_profile_title(
         )
         return
 
-    # Проверяем, что профиль фрилансера существует.
+    # Проверяем наличие FreelancerProfile.
+    # Если его ещё нет — создаём.
     await get_or_create_freelancer_profile(
         user_id=user.id,
     )
 
-    # Сохраняем Title.
+    # Сохраняем Title в PostgreSQL.
     profile = await update_freelancer_title(
         user_id=user.id,
         title=title,
@@ -143,7 +137,8 @@ async def process_profile_title(
         )
         return
 
-    # Закончили редактирование Title.
+    # Title успешно сохранён.
+    # Выходим из FSM.
     await state.clear()
 
     await message.answer(
