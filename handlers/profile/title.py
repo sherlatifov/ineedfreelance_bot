@@ -1,5 +1,6 @@
 from aiogram import F, Router
-from aiogram.types import CallbackQuery
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, Message
 from aiogram.fsm.state import State, StatesGroup
 
 from database.repositories.freelancer_profile import (
