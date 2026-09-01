@@ -31,12 +31,12 @@ async def edit_profile_title(
     callback: CallbackQuery,
     state: FSMContext,
 ):
-    """
-    Начало изменения профессионального Title.
+        """
+        Начало изменения профессионального Title.
 
-    Следующим этапом сюда добавим FSM.
+        Следующим этапом сюда добавим FSM.
 
-    Сценарий будет:
+        Сценарий будет:
 
         💻 Изменить Title
                 ↓
@@ -49,8 +49,8 @@ async def edit_profile_title(
         PostgreSQL
                 ↓
         профиль
-    """
-        user = await get_user(callback.from_user.id)
+        """
+user = await get_user(callback.from_user.id)
     
         if user is None:
                 await callback.answer(
