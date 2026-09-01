@@ -1,668 +1,303 @@
 from aiogram import F, Router
-from aiogram.fsm.context import FSMContext
-from aiogram.fsm.state import State, StatesGroup
-from aiogram.types import CallbackQuery, Message
+from aiogram.types import CallbackQuery
 
-from sqlalchemy import select
-
-from database.database import SessionLocal
-from database.models import User, FreelancerProfile
-
-from keyboards.profile import freelancer_profile_menu
-
+from database.repositories.user import get_user
+from keyboards.client import client_menu
+from keyboards.freelancer import freelancer_menu
+from keyboards.profile import freelancer_profile_keyboard
 from locales import t
 
-
+# Создаём Router.
+#
+# Все обработчики, связанные с профилем,
+# будут находиться здесь.
 router = Router()
 
-
-# ============================================================
-# СОСТОЯНИЯ
-# ============================================================
-
-
-class FreelancerProfileState(StatesGroup):
-
-    waiting_for_title = State()
-
-    waiting_for_bio = State()
-
-    waiting_for_skills = State()
-
-    waiting_for_rate = State()
-
-    waiting_for_experience = State()
-
-
-# ============================================================
-# МОЙ ПРОФИЛЬ
-# ============================================================
-
-
-@router.callback_query(
-    F.data == "freelancer:profile"
-)
 async def show_freelancer_profile(
     callback: CallbackQuery,
-):
+) -> None:
+    """
+    Показывает профиль текущего пользователя
+    в режиме фрилансера.
 
-    async with SessionLocal() as session:
+    Эта функция НЕ является callback handler'ом.
+    Это обычная вспомогательная функция,
+    которую смогут использовать разные обработчики.
+    """
 
-        result = await session.execute(
-            select(User).where(
-                User.telegram_id
-                == callback.from_user.id
-            )
-        )
+    # Получаем Telegram ID пользователя,
+    # который нажал кнопку.
+    telegram_id = callback.from_user.id
 
-        user = result.scalar_one_or_none()
+    # Получаем пользователя из базы данных.
+    user = await get_user(telegram_id)
 
-        if user is None:
-
-            await callback.answer(
-                "User not found",
-                show_alert=True,
-            )
-
-            return
-
-        language = user.language or "ru"
-
-        result = await session.execute(
-            select(FreelancerProfile).where(
-                FreelancerProfile.user_id
-                == user.id
-            )
-        )
-
-        profile = result.scalar_one_or_none()
-
-    # --------------------------------------------------------
-    # Профиль отсутствует
-    # --------------------------------------------------------
-
-    if profile is None:
-
-        if language == "en":
-
-            text = (
-                "👤 <b>My profile</b>\n\n"
-                f"<b>{user.display_name}</b>\n"
-                f"@{user.username or '—'}\n\n"
-                "Your freelancer profile is not "
-                "filled in yet."
-            )
-
-        else:
-
-            text = (
-                "👤 <b>Мой профиль</b>\n\n"
-                f"<b>{user.display_name}</b>\n"
-                f"@{user.username or '—'}\n\n"
-                "Ваш профиль фрилансера "
-                "ещё не заполнен."
-            )
-
-        await callback.message.edit_text(
-            text,
-            parse_mode="HTML",
-            reply_markup=freelancer_profile_menu(
-                language
-            ),
-        )
-
-        await callback.answer()
-
-        return
-
-    # --------------------------------------------------------
-    # Профиль существует
-    # --------------------------------------------------------
-
-    if language == "en":
-
-        text = (
-            "👤 <b>My freelancer profile</b>\n\n"
-            f"<b>{user.display_name}</b>\n"
-            f"@{user.username or '—'}\n\n"
-            f"💻 <b>{profile.title or 'Not specified'}</b>\n\n"
-            f"📝 {profile.bio or 'No description'}\n\n"
-            f"🛠 <b>Skills:</b>\n"
-            f"{profile.skills or 'Not specified'}\n\n"
-            f"💰 <b>Rate:</b> "
-            f"{profile.hourly_rate or '—'} €/hour\n\n"
-            f"📈 <b>Experience:</b> "
-            f"{profile.experience or 'Not specified'}"
-        )
-
-    else:
-
-        text = (
-            "👤 <b>Мой профиль фрилансера</b>\n\n"
-            f"<b>{user.display_name}</b>\n"
-            f"@{user.username or '—'}\n\n"
-            f"💻 <b>{profile.title or 'Не указано'}</b>\n\n"
-            f"📝 {profile.bio or 'Описание отсутствует'}\n\n"
-            f"🛠 <b>Навыки:</b>\n"
-            f"{profile.skills or 'Не указаны'}\n\n"
-            f"💰 <b>Ставка:</b> "
-            f"{profile.hourly_rate or '—'} €/час\n\n"
-            f"📈 <b>Опыт:</b> "
-            f"{profile.experience or 'Не указан'}"
-        )
-
-    await callback.message.edit_text(
-        text,
-        parse_mode="HTML",
-        reply_markup=freelancer_profile_menu(
-            language
-        ),
-    )
-
-    await callback.answer()
-
-
-# ============================================================
-# НАЧАЛО ЗАПОЛНЕНИЯ ПРОФИЛЯ
-# ============================================================
-
-
-@router.callback_query(
-    F.data == "profile:edit"
-)
-async def start_profile_edit(
-    callback: CallbackQuery,
-    state: FSMContext,
-):
-
-    async with SessionLocal() as session:
-
-        result = await session.execute(
-            select(User).where(
-                User.telegram_id
-                == callback.from_user.id
-            )
-        )
-
-        user = result.scalar_one_or_none()
-
+    # Если пользователя нет в БД,
+    # показываем ошибку.
     if user is None:
-
         await callback.answer(
-            "User not found",
+            "Пользователь не найден.",
             show_alert=True,
         )
-
         return
-
+    
+    # Получаем язык пользователя.
+    #
+    # Если язык по какой-то причине не установлен,
+    # используем русский.
     language = user.language or "ru"
 
-    if language == "en":
+    # ---------------------------------------------------------
+    # ДАННЫЕ ПРОФИЛЯ
+    # ---------------------------------------------------------
 
-        text = (
-            "💻 <b>Your specialization</b>\n\n"
-            "For example:\n"
-            "Frontend Developer\n"
-            "Telegram Bot Developer\n"
-            "UI/UX Designer\n"
-            "Video Editor"
-        )
+    # Имя берём непосредственно из users.display_name.
+    display_name = user.display_name or "Не указано"
 
-    else:
+    # ---------------------------------------------------------
+    # ВРЕМЕННЫЕ ЗНАЧЕНИЯ
+    # ---------------------------------------------------------
+    #
+    # Сейчас система рейтинга, отзывов и заказов
+    # ещё не реализована.
+    #
+    # Поэтому временно показываем нули.
+    #
+    # Позже эти значения будут получаться
+    # непосредственно из базы данных.
+    rating = "—"
+    reviews_count = 0
+    completed_orders = 0
 
-        text = (
-            "💻 <b>Ваша специализация</b>\n\n"
-            "Например:\n"
-            "Frontend Developer\n"
-            "Telegram Bot Developer\n"
-            "UI/UX Designer\n"
-            "Video Editor"
-        )
+    # ---------------------------------------------------------
+    # ФОРМИРУЕМ ТЕКСТ ПРОФИЛЯ
+    # ---------------------------------------------------------
 
-    await callback.message.edit_text(
-        text,
-        parse_mode="HTML",
+    text = (
+        f"👨‍💻 <b>{display_name}</b>\n\n"
+        f"⭐ Рейтинг: {rating}\n"
+        f"💬 Отзывы: {reviews_count}\n"
+        f"✅ Заказов выполнено: {completed_orders}\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n\n"
+        f"💻 <b>Title</b>\n"
+        f"Пока не указан\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n\n"
+        f"📝 <b>О себе</b>\n"
+        f"Пока не указано\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n\n"
+        f"🛠 <b>Навыки</b>\n"
+        f"Пока не указаны\n\n"
+        f"━━━━━━━━━━━━━━━━━━\n\n"
+        f"💰 <b>Ставка</b>\n"
+        f"Пока не указана"
     )
 
-    await state.set_state(
-        FreelancerProfileState.waiting_for_title
+    # Получаем клавиатуру профиля.
+    keyboard = freelancer_profile_keyboard(
+        language=language,
     )
 
+    # Отвечаем на callback.
+    #
+    # Без этого Telegram будет продолжать показывать
+    # индикатор загрузки на кнопке.
     await callback.answer()
 
+    # callback.message может отсутствовать
+    # или быть недоступным.
+    #
+    # Поэтому сначала проверяем его.
+    if callback.message:
+        await callback.message.edit_text(
+            text=text,
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
 
-# ============================================================
-# СПЕЦИАЛИЗАЦИЯ
-# ============================================================
+# =============================================================
+# ОТКРЫТИЕ ПРОФИЛЯ
+# =============================================================
 
-
-@router.message(
-    FreelancerProfileState.waiting_for_title
-)
-async def process_title(
-    message: Message,
-    state: FSMContext,
+@router.callback_query(F.data == "freelancer:profile")
+async def freelancer_profile(
+    callback: CallbackQuery,
 ):
+    """
+    Обработчик кнопки:
 
-    title = message.text.strip()
+        👤 Мой профиль
 
-    if len(title) < 2:
+    из меню фрилансера.
+    """
 
-        await message.answer(
-            "Слишком короткое название."
-        )
+    await show_freelancer_profile(callback)
 
-        return
+# =============================================================
+# КНОПКА "НАЗАД"
+# =============================================================
 
-    await state.update_data(
-        title=title
-    )
-
-    async with SessionLocal() as session:
-
-        result = await session.execute(
-            select(User).where(
-                User.telegram_id
-                == message.from_user.id
-            )
-        )
-
-        user = result.scalar_one()
-
-        language = user.language or "ru"
-
-    if language == "en":
-
-        text = (
-            "📝 <b>Tell us about yourself</b>\n\n"
-            "Describe your experience and "
-            "what you can do for clients."
-        )
-
-    else:
-
-        text = (
-            "📝 <b>Расскажите о себе</b>\n\n"
-            "Опишите ваш опыт и то, "
-            "что вы можете предложить заказчикам."
-        )
-
-    await message.answer(
-        text,
-        parse_mode="HTML",
-    )
-
-    await state.set_state(
-        FreelancerProfileState.waiting_for_bio
-    )
-
-
-# ============================================================
-# BIO
-# ============================================================
-
-
-@router.message(
-    FreelancerProfileState.waiting_for_bio
-)
-async def process_bio(
-    message: Message,
-    state: FSMContext,
+@router.callback_query(F.data == "profile:back")
+async def profile_back(
+    callback: CallbackQuery,
 ):
+    """
+    Возвращает пользователя из профиля
+    обратно в меню фрилансера.
 
-    bio = message.text.strip()
+    Пока делаем простой вариант.
 
-    if len(bio) < 10:
+    Позже здесь можно будет подключить
+    полноценную систему навигации.
+    """
 
-        await message.answer(
-            "Описание слишком короткое."
+    # Получаем пользователя.
+    user = await get_user(callback.from_user.id)
+
+    # Если пользователь не найден —
+    # показываем ошибку.
+    if user is None:
+        await callback.answer(
+            "Пользователь не найден.",
+            show_alert=True,
         )
-
         return
 
-    await state.update_data(
-        bio=bio
+    # Определяем язык.
+    language = user.language or "ru"
+
+    # Проверяем права администратора.
+    #
+    # Это нужно для того, чтобы администратор
+    # продолжал видеть кнопку админ-панели.
+    is_admin = user.is_admin
+
+    # Получаем меню фрилансера.
+    keyboard = freelancer_menu(
+        language=language,
+        is_admin=is_admin,
     )
 
-    async with SessionLocal() as session:
-
-        result = await session.execute(
-            select(User).where(
-                User.telegram_id
-                == message.from_user.id
-            )
-        )
-
-        user = result.scalar_one()
-
-        language = user.language or "ru"
-
-    if language == "en":
-
-        text = (
-            "🛠 <b>Your skills</b>\n\n"
-            "Write your main skills separated "
-            "by commas.\n\n"
-            "Example:\n"
-            "Python, Aiogram, PostgreSQL, Docker"
-        )
-
-    else:
-
-        text = (
-            "🛠 <b>Ваши навыки</b>\n\n"
-            "Напишите основные навыки через запятую.\n\n"
-            "Например:\n"
-            "Python, Aiogram, PostgreSQL, Docker"
-        )
-
-    await message.answer(
-        text,
-        parse_mode="HTML",
+    # Текст главного меню.
+    text = (
+        t(language, "freelancer_mode")
+        + "\n\n"
+        + t(language, "choose_action")
     )
 
-    await state.set_state(
-        FreelancerProfileState.waiting_for_skills
-    )
+    # Убираем индикатор загрузки Telegram.
+    await callback.answer()
 
+    # Возвращаемся на экран меню,
+    # редактируя существующее сообщение.
+    if callback.message:
+        await callback.message.edit_text(
+            text=text,
+            parse_mode="HTML",
+            reply_markup=keyboard,
+        )
 
-# ============================================================
-# SKILLS
-# ============================================================
+# =============================================================
+# ЗАГОТОВКИ ДЛЯ БУДУЩЕГО РЕДАКТИРОВАНИЯ
+# =============================================================
 
-
-@router.message(
-    FreelancerProfileState.waiting_for_skills
-)
-async def process_skills(
-    message: Message,
-    state: FSMContext,
+@router.callback_query(F.data == "profile:edit_name")
+async def edit_profile_name(
+    callback: CallbackQuery,
 ):
+    """
+    Пока только заглушка.
 
-    skills = message.text.strip()
+    На следующем этапе здесь будет FSM:
 
-    if len(skills) < 2:
+        Нажал "Изменить имя"
+                    ↓
+        Бот просит новое имя
+                    ↓
+        Пользователь вводит имя
+                    ↓
+        Сохраняем users.display_name
+                    ↓
+        Возвращаем профиль
+    """
 
-        await message.answer(
-            "Укажите хотя бы один навык."
-        )
-
-        return
-
-    await state.update_data(
-        skills=skills
-    )
-
-    async with SessionLocal() as session:
-
-        result = await session.execute(
-            select(User).where(
-                User.telegram_id
-                == message.from_user.id
-            )
-        )
-
-        user = result.scalar_one()
-
-        language = user.language or "ru"
-
-    if language == "en":
-
-        text = (
-            "💰 <b>Your hourly rate</b>\n\n"
-            "Enter your rate in euros.\n\n"
-            "Example: 20"
-        )
-
-    else:
-
-        text = (
-            "💰 <b>Ваша почасовая ставка</b>\n\n"
-            "Укажите стоимость в евро.\n\n"
-            "Например: 20"
-        )
-
-    await message.answer(
-        text,
-        parse_mode="HTML",
-    )
-
-    await state.set_state(
-        FreelancerProfileState.waiting_for_rate
+    await callback.answer(
+        "Редактирование имени сделаем следующим этапом 🙂",
+        show_alert=True,
     )
 
 
-# ============================================================
-# RATE
-# ============================================================
-
-
-@router.message(
-    FreelancerProfileState.waiting_for_rate
-)
-async def process_rate(
-    message: Message,
-    state: FSMContext,
+@router.callback_query(F.data == "profile:edit_title")
+async def edit_profile_title(
+    callback: CallbackQuery,
 ):
+    """
+    Заглушка для будущего редактирования Title.
+    """
 
-    try:
-
-        rate = int(message.text.strip())
-
-    except ValueError:
-
-        await message.answer(
-            "Введите число. Например: 20"
-        )
-
-        return
-
-    if rate <= 0:
-
-        await message.answer(
-            "Ставка должна быть больше 0."
-        )
-
-        return
-
-    if rate > 10000:
-
-        await message.answer(
-            "Слишком большая ставка."
-        )
-
-        return
-
-    await state.update_data(
-        hourly_rate=rate
-    )
-
-    async with SessionLocal() as session:
-
-        result = await session.execute(
-            select(User).where(
-                User.telegram_id
-                == message.from_user.id
-            )
-        )
-
-        user = result.scalar_one()
-
-        language = user.language or "ru"
-
-    if language == "en":
-
-        text = (
-            "📈 <b>Your experience</b>\n\n"
-            "How many years of experience "
-            "do you have?"
-        )
-
-    else:
-
-        text = (
-            "📈 <b>Ваш опыт</b>\n\n"
-            "Сколько лет опыта у вас?"
-        )
-
-    await message.answer(
-        text,
-        parse_mode="HTML",
-    )
-
-    await state.set_state(
-        FreelancerProfileState.waiting_for_experience
+    await callback.answer(
+        "Редактирование Title сделаем следующим этапом 🙂",
+        show_alert=True,
     )
 
 
-# ============================================================
-# EXPERIENCE
-# ============================================================
-
-
-@router.message(
-    FreelancerProfileState.waiting_for_experience
-)
-async def process_experience(
-    message: Message,
-    state: FSMContext,
+@router.callback_query(F.data == "profile:edit_bio")
+async def edit_profile_bio(
+    callback: CallbackQuery,
 ):
+    """
+    Заглушка для будущего поля "О себе".
+    """
 
-    experience = message.text.strip()
-
-    if len(experience) < 1:
-
-        await message.answer(
-            "Укажите ваш опыт."
-        )
-
-        return
-
-    data = await state.get_data()
-
-    async with SessionLocal() as session:
-
-        result = await session.execute(
-            select(User).where(
-                User.telegram_id
-                == message.from_user.id
-            )
-        )
-
-        user = result.scalar_one()
-
-        language = user.language or "ru"
-
-        # ----------------------------------------------------
-        # Ищем существующий профиль
-        # ----------------------------------------------------
-
-        result = await session.execute(
-            select(FreelancerProfile).where(
-                FreelancerProfile.user_id
-                == user.id
-            )
-        )
-
-        profile = result.scalar_one_or_none()
-
-        # ----------------------------------------------------
-        # Если профиля нет — создаём
-        # ----------------------------------------------------
-
-        if profile is None:
-
-            profile = FreelancerProfile(
-                user_id=user.id,
-            )
-
-            session.add(profile)
-
-        # ----------------------------------------------------
-        # Сохраняем данные
-        # ----------------------------------------------------
-
-        profile.title = data["title"]
-
-        profile.bio = data["bio"]
-
-        profile.skills = data["skills"]
-
-        profile.hourly_rate = data["hourly_rate"]
-
-        profile.experience = experience
-
-        await session.commit()
-
-    await state.clear()
-
-    # --------------------------------------------------------
-    # Готово
-    # --------------------------------------------------------
-
-    if language == "en":
-
-        text = (
-            "🎉 <b>Your profile is ready!</b>\n\n"
-            "Clients can now see your freelancer "
-            "profile and contact you through "
-            "FreelanceHub."
-        )
-
-    else:
-
-        text = (
-            "🎉 <b>Ваш профиль готов!</b>\n\n"
-            "Теперь заказчики смогут видеть ваш "
-            "профиль фрилансера и находить вас "
-            "через FreelanceHub."
-        )
-
-    await message.answer(
-        text,
-        parse_mode="HTML",
+    await callback.answer(
+        "Поле «О себе» сделаем следующим этапом 🙂",
+        show_alert=True,
     )
 
-    # --------------------------------------------------------
-    # Показываем профиль
-    # --------------------------------------------------------
 
-    if language == "en":
+@router.callback_query(F.data == "profile:edit_skills")
+async def edit_profile_skills(
+    callback: CallbackQuery,
+):
+    """
+    Заглушка для системы навыков.
+    """
 
-        profile_text = (
-            "👤 <b>My freelancer profile</b>\n\n"
-            f"<b>{user.display_name}</b>\n"
-            f"@{user.username or '—'}\n\n"
-            f"💻 <b>{data['title']}</b>\n\n"
-            f"📝 {data['bio']}\n\n"
-            f"🛠 <b>Skills:</b>\n"
-            f"{data['skills']}\n\n"
-            f"💰 <b>Rate:</b> "
-            f"{data['hourly_rate']} €/hour\n\n"
-            f"📈 <b>Experience:</b> "
-            f"{experience}"
-        )
+    await callback.answer(
+        "Навыки сделаем отдельным этапом 🙂",
+        show_alert=True,
+    )
 
-    else:
 
-        profile_text = (
-            "👤 <b>Мой профиль фрилансера</b>\n\n"
-            f"<b>{user.display_name}</b>\n"
-            f"@{user.username or '—'}\n\n"
-            f"💻 <b>{data['title']}</b>\n\n"
-            f"📝 {data['bio']}\n\n"
-            f"🛠 <b>Навыки:</b>\n"
-            f"{data['skills']}\n\n"
-            f"💰 <b>Ставка:</b> "
-            f"{data['hourly_rate']} €/час\n\n"
-            f"📈 <b>Опыт:</b> "
-            f"{experience}"
-        )
+@router.callback_query(F.data == "profile:edit_rate")
+async def edit_profile_rate(
+    callback: CallbackQuery,
+):
+    """
+    Заглушка для почасовой ставки.
+    """
 
-    await message.answer(
-        profile_text,
-        parse_mode="HTML",
-        reply_markup=freelancer_profile_menu(
-            language
-        ),
+    await callback.answer(
+        "Ставку сделаем отдельным этапом 🙂",
+        show_alert=True,
+    )
+
+
+@router.callback_query(F.data == "profile:reviews")
+async def profile_reviews(
+    callback: CallbackQuery,
+):
+    """
+    Заглушка для системы отзывов.
+
+    Позже здесь появится:
+        ⭐ рейтинг
+        💬 список отзывов
+        👤 автор отзыва
+        📄 текст
+        ◀️ ▶️ пагинация
+    """
+
+    await callback.answer(
+        "Систему отзывов сделаем позже 🙂",
+        show_alert=True,
     )
