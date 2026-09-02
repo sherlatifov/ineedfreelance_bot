@@ -141,9 +141,9 @@ async def process_profile_title(
     # Выходим из FSM.
     await state.clear()
 
-    await message.answer(
+    await callback.answer(
         "✅ <b>Title успешно сохранён!</b>",
-        parse_mode="HTML",
+        show_alert=True,
     )
 
     # Показываем обновлённый профиль.
