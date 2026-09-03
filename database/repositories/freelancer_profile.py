@@ -49,16 +49,8 @@ async def get_or_create_freelancer_profile(
     Если профиля ещё нет —
     создаёт его.
 
-    Это очень удобно для нашего бота.
-
-    Нам не придётся отдельно писать:
-
-        существует профиль?
-            ↓
-        да -> обновить
-        нет -> создать
-
-    Репозиторий сам занимается этим.
+    user_id — это users.id,
+    а не Telegram ID.
     """
 
     async with SessionLocal() as session:
@@ -106,7 +98,7 @@ async def update_freelancer_title(
     Изменяет Title фрилансера.
 
     user_id:
-        ID пользователя из users.id
+        ID пользователя из users.id.
 
     title:
         новый профессиональный заголовок.
@@ -139,6 +131,58 @@ async def update_freelancer_title(
         await session.commit()
 
         # Получаем актуальное состояние объекта.
+        await session.refresh(profile)
+
+        return profile
+
+
+async def update_freelancer_bio(
+    user_id: int,
+    bio: str,
+) -> FreelancerProfile | None:
+    """
+    Изменяет информацию «О себе» у фрилансера.
+
+    user_id:
+        ID пользователя из users.id.
+
+    bio:
+        новый текст «О себе».
+
+    Возвращает:
+        FreelancerProfile
+        или None, если профиль не найден.
+    """
+
+    async with SessionLocal() as session:
+
+        # -----------------------------------------------------
+        # ИЩЕМ ПРОФИЛЬ
+        # -----------------------------------------------------
+
+        result = await session.execute(
+            select(FreelancerProfile).where(
+                FreelancerProfile.user_id == user_id
+            )
+        )
+
+        profile = result.scalar_one_or_none()
+
+        # Если профиль не найден —
+        # возвращаем None.
+        if profile is None:
+            return None
+
+        # -----------------------------------------------------
+        # ОБНОВЛЯЕМ BIO
+        # -----------------------------------------------------
+
+        profile.bio = bio
+
+        # Сохраняем изменение в PostgreSQL.
+        await session.commit()
+
+        # Обновляем объект актуальными данными из БД.
         await session.refresh(profile)
 
         return profile
