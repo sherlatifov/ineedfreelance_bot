@@ -12,21 +12,26 @@ router = Router()
 
 
 async def build_freelancer_profile_text(
-    user_id: int,
+    telegram_id: int,
 ) -> tuple[str, object] | None:
     """
     Собирает текст профиля фрилансера
     и клавиатуру.
 
+    telegram_id — Telegram ID пользователя.
+
     Возвращает:
         (text, keyboard)
     """
 
-    user = await get_user(user_id)
+    # ВАЖНО:
+    # get_user() ищет пользователя именно по telegram_id.
+    user = await get_user(telegram_id)
 
     if user is None:
         return None
 
+    # Здесь уже используем внутренний ID пользователя из БД.
     profile = await get_or_create_freelancer_profile(
         user_id=user.id,
     )
@@ -79,7 +84,7 @@ async def show_freelancer_profile(
     """
 
     result = await build_freelancer_profile_text(
-        user_id=callback.from_user.id,
+        telegram_id=callback.from_user.id,
     )
 
     if result is None:
@@ -111,7 +116,7 @@ async def show_freelancer_profile_from_message(
     """
 
     result = await build_freelancer_profile_text(
-        user_id=message.from_user.id,
+        telegram_id=message.from_user.id,
     )
 
     if result is None:
