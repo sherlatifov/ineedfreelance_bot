@@ -11,11 +11,31 @@ def freelancer_menu(
     builder = InlineKeyboardBuilder()
 
     # ========================================================
+    # АДМИН-ПАНЕЛЬ
+    # ========================================================
+    
+    if is_admin:
+        builder.button(
+            text="👑 Админ-панель",
+            callback_data="admin:panel",
+        )
+
+
+    # ========================================================
     # ПРОЕКТЫ
     # ========================================================
 
     builder.button(
         text=t(language, "find_projects"),
+        callback_data="freelancer:projects",
+    )
+
+    # ========================================================
+    # НАЙТИ ВАКАНСИИ
+    # ========================================================
+
+    builder.button(
+        text=t(language, "find_vacancies"),
         callback_data="freelancer:projects",
     )
 
@@ -54,16 +74,6 @@ def freelancer_menu(
         text=t(language, "switch_client"),
         callback_data="switch:client",
     )
-
-    # ========================================================
-    # АДМИН-ПАНЕЛЬ
-    # ========================================================
-    
-    if is_admin:
-        builder.button(
-            text="👑 Админ-панель",
-            callback_data="admin:panel",
-        )
 
     builder.adjust(1)
 

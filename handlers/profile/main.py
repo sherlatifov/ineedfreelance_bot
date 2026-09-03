@@ -47,6 +47,7 @@ async def build_freelancer_profile_text(
         rate = "Пока не указана"
 
     text = (
+        f"👨‍💻 <b>Мой профиль</b>\n\n"
         f"👨‍💻 <b>{display_name}</b>\n\n"
         f"💻 <b>{title}</b>\n\n"
         f"⭐ Рейтинг: —\n"
