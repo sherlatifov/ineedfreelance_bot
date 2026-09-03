@@ -1,3 +1,5 @@
+import logging
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -9,14 +11,17 @@ from database.repositories.freelancer_profile import (
 )
 from database.repositories.user import get_user
 from handlers.profile.main import build_freelancer_profile_text
-from utils.message import (
-    delete_message_safely,
-    edit_message_safely,
-)
+from utils.message import delete_message_safely
 
 
 router = Router()
 
+logger = logging.getLogger(__name__)
+
+
+# ============================================================
+# FSM СОСТОЯНИЯ
+# ============================================================
 
 class TitleStates(StatesGroup):
     """
@@ -27,7 +32,7 @@ class TitleStates(StatesGroup):
 
 
 # ============================================================
-# НАЖАТИЕ КНОПКИ «ИЗМЕНИТЬ TITLE»
+# НАЖАТИЕ «ИЗМЕНИТЬ TITLE»
 # ============================================================
 
 @router.callback_query(F.data == "profile:edit_title")
@@ -36,14 +41,14 @@ async def edit_profile_title(
     state: FSMContext,
 ):
     """
-    Начинает редактирование Title.
+    Открывает экран изменения Title.
 
-    Пользователь нажимает:
+    Мы НЕ отправляем новое сообщение.
 
-        💻 Изменить Title
+    Вместо этого редактируем существующее сообщение
+    профиля.
 
-    После этого бот переводит пользователя
-    в состояние ожидания текста.
+    После этого пользователь вводит новый Title.
     """
 
     # --------------------------------------------------------
@@ -55,37 +60,33 @@ async def edit_profile_title(
     )
 
     if user is None:
-
         await callback.answer(
             "Пользователь не найден.",
             show_alert=True,
         )
-
         return
 
     # --------------------------------------------------------
-    # Проверяем, что сообщение профиля существует
+    # Проверяем сообщение
     # --------------------------------------------------------
 
     if callback.message is None:
-
         await callback.answer(
             "Не удалось открыть редактирование.",
             show_alert=True,
         )
-
         return
 
     # --------------------------------------------------------
-    # Сохраняем ID сообщения профиля
+    # СОХРАНЯЕМ ID СООБЩЕНИЯ ПРОФИЛЯ
     # --------------------------------------------------------
     #
     # Например:
     #
-    # сообщение №125
+    # profile_message_id = 157
     #
-    # Именно его потом будем превращать
-    # обратно в обновлённый профиль.
+    # После ввода Title именно сообщение №157
+    # мы вернём обратно в профиль.
     #
 
     await state.update_data(
@@ -93,19 +94,17 @@ async def edit_profile_title(
     )
 
     # --------------------------------------------------------
-    # Переводим пользователя в FSM
+    # Переводим пользователя в состояние ожидания Title
     # --------------------------------------------------------
 
     await state.set_state(
         TitleStates.waiting_for_title
     )
 
-    # Закрываем "часики" у inline-кнопки.
     await callback.answer()
 
     # --------------------------------------------------------
-    # Вместо нового сообщения редактируем
-    # существующее сообщение профиля.
+    # Редактируем существующее сообщение профиля
     # --------------------------------------------------------
 
     await callback.message.edit_text(
@@ -113,15 +112,13 @@ async def edit_profile_title(
         "Введите ваш профессиональный Title.\n\n"
         "Например:\n"
         "<code>Python Backend Developer</code>\n\n"
-        "Максимум — 255 символов.\n\n"
-        "После отправки Title профиль "
-        "обновится автоматически.",
+        "Максимум — 255 символов.",
         parse_mode="HTML",
     )
 
 
 # ============================================================
-# ПОЛУЧЕНИЕ НОВОГО TITLE
+# ПОЛЬЗОВАТЕЛЬ ВВОДИТ TITLE
 # ============================================================
 
 @router.message(
@@ -132,23 +129,26 @@ async def process_profile_title(
     state: FSMContext,
 ):
     """
-    Получает новый Title от пользователя.
+    Получает новый Title пользователя.
 
-    Последовательность:
+    После успешного сохранения:
 
-        сообщение пользователя
-                ↓
-        проверка
-                ↓
         PostgreSQL
-                ↓
-        удаление сообщения пользователя
-                ↓
-        обновление профиля
+             ↓
+        удаляем сообщение пользователя
+             ↓
+        обновляем сообщение профиля
+             ↓
+        показываем профиль
     """
 
+    logger.info(
+        "Получен новый Title от пользователя %s",
+        message.from_user.id,
+    )
+
     # ========================================================
-    # 1. ПРОВЕРЯЕМ ТЕКСТ
+    # 1. ПРОВЕРЯЕМ, ЧТО ПРИШЁЛ ТЕКСТ
     # ========================================================
 
     if not message.text:
@@ -160,19 +160,17 @@ async def process_profile_title(
 
         return
 
-    # Убираем пробелы по краям.
-
     title = message.text.strip()
 
     # ========================================================
-    # 2. ПРОВЕРЯЕМ ДЛИНУ
+    # 2. ПРОВЕРЯЕМ ДЛИНУ TITLE
     # ========================================================
 
     if len(title) < 2:
 
         await message.answer(
             "❌ Title слишком короткий.\n\n"
-            "Введите минимум 2 символа."
+            "Минимум — 2 символа."
         )
 
         return
@@ -181,7 +179,7 @@ async def process_profile_title(
 
         await message.answer(
             "❌ Title слишком длинный.\n\n"
-            "Максимальная длина — 255 символов."
+            "Максимум — 255 символов."
         )
 
         return
@@ -206,7 +204,7 @@ async def process_profile_title(
         return
 
     # ========================================================
-    # 4. ПОЛУЧАЕМ ИЛИ СОЗДАЁМ FREELANCER PROFILE
+    # 4. ПОЛУЧАЕМ FREELANCER PROFILE
     # ========================================================
 
     await get_or_create_freelancer_profile(
@@ -232,8 +230,14 @@ async def process_profile_title(
 
         return
 
+    logger.info(
+        "Title успешно сохранён: user_id=%s title=%r",
+        user.id,
+        title,
+    )
+
     # ========================================================
-    # 6. ПОЛУЧАЕМ ID СТАРОГО СООБЩЕНИЯ ПРОФИЛЯ
+    # 6. ПОЛУЧАЕМ ID СООБЩЕНИЯ ПРОФИЛЯ
     # ========================================================
 
     data = await state.get_data()
@@ -242,22 +246,14 @@ async def process_profile_title(
         "profile_message_id"
     )
 
-    # Для диагностики записываем информацию в лог.
-
-    print(
-        f"TITLE SAVED: "
-        f"user_id={user.id}, "
-        f"title={title!r}, "
-        f"profile_message_id={profile_message_id}"
+    logger.info(
+        "profile_message_id=%s",
+        profile_message_id,
     )
 
     # ========================================================
     # 7. ОЧИЩАЕМ FSM
     # ========================================================
-    #
-    # После этого следующее сообщение пользователя
-    # уже не будет считаться Title.
-    #
 
     await state.clear()
 
@@ -265,12 +261,12 @@ async def process_profile_title(
     # 8. УДАЛЯЕМ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ
     # ========================================================
     #
-    # Например:
+    # Пользователь отправил:
     #
-    # Пользователь:
     # Python Backend Developer
     #
-    # Это сообщение удаляем.
+    # После сохранения это сообщение нам больше
+    # не нужно.
     #
 
     await delete_message_safely(
@@ -289,56 +285,83 @@ async def process_profile_title(
 
     if result is None:
 
+        logger.error(
+            "Не удалось построить профиль: user_id=%s",
+            user.id,
+        )
+
         return
 
-    text, keyboard = result
+    profile_text, keyboard = result
 
     # ========================================================
-    # 10. ПЫТАЕМСЯ ИЗМЕНИТЬ СТАРОЕ СООБЩЕНИЕ
+    # 10. ДОБАВЛЯЕМ УВЕДОМЛЕНИЕ ОБ УСПЕШНОМ ИЗМЕНЕНИИ
+    # ========================================================
+    #
+    # Не отправляем отдельное сообщение.
+    #
+    # Просто добавляем уведомление в начало
+    # того же сообщения, которое сейчас находится
+    # на экране пользователя.
+    #
+
+    final_text = (
+        "✅ <b>Title успешно изменён!</b>\n\n"
+        + profile_text
+    )
+
+    # ========================================================
+    # 11. ВОЗВРАЩАЕМ ПОЛЬЗОВАТЕЛЯ НА ПРОФИЛЬ
     # ========================================================
 
     if profile_message_id is not None:
 
-        updated = await edit_message_safely(
-            bot=message.bot,
-            chat_id=message.chat.id,
-            message_id=profile_message_id,
-            text=text,
-            reply_markup=keyboard,
-        )
+        try:
 
-        # ====================================================
-        # ВОТ ЗДЕСЬ БЫЛА ОСНОВНАЯ ОШИБКА
-        # ====================================================
-        #
-        # Раньше было:
-        #
-        #     updated = ...
-        #     return
-        #
-        # Поэтому если Telegram возвращал ошибку,
-        # обработчик всё равно завершался.
-        #
-        # Теперь проверяем результат.
-        #
+            await message.bot.edit_message_text(
+                chat_id=message.chat.id,
+                message_id=profile_message_id,
+                text=final_text,
+                parse_mode="HTML",
+                reply_markup=keyboard,
+            )
 
-        if updated:
+            logger.info(
+                "Профиль успешно обновлён после изменения Title. "
+                "user_id=%s message_id=%s",
+                user.id,
+                profile_message_id,
+            )
 
             return
 
+        except Exception:
+            # ------------------------------------------------
+            # Очень важно:
+            #
+            # здесь мы НЕ скрываем ошибку.
+            #
+            # Если Telegram не смог изменить сообщение,
+            # полный traceback попадёт в лог BotHost.
+            # ------------------------------------------------
+
+            logger.exception(
+                "ОШИБКА при возврате на профиль. "
+                "user_id=%s message_id=%s",
+                user.id,
+                profile_message_id,
+            )
+
     # ========================================================
-    # 11. FALLBACK
+    # 12. FALLBACK
     # ========================================================
     #
     # Если старое сообщение невозможно изменить,
-    # создаём новое сообщение профиля.
-    #
-    # Благодаря этому пользователь в любом случае
-    # увидит результат.
+    # отправляем новый профиль.
     #
 
     await message.answer(
-        text=text,
+        text=final_text,
         parse_mode="HTML",
         reply_markup=keyboard,
     )
