@@ -182,7 +182,7 @@ async def update_display_name(
     display_name: str,
 ) -> User | None:
 
-"""
+    """
     Изменяет отображаемое имя пользователя.
 
     telegram_id:
