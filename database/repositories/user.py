@@ -182,8 +182,23 @@ async def update_display_name(
     display_name: str,
 ) -> User | None:
 
-    async with SessionLocal() as session:
+"""
+    Изменяет отображаемое имя пользователя.
 
+    telegram_id:
+        Telegram ID пользователя.
+
+    display_name:
+        Новое отображаемое имя.
+
+    Возвращает:
+        User
+        или None, если пользователь не найден.
+    """
+
+    async with SessionLocal() as session:
+        
+        # Ищем пользователя именно по Telegram ID.
         result = await session.execute(
             select(User).where(
                 User.telegram_id == telegram_id
@@ -195,13 +210,13 @@ async def update_display_name(
         if user is None:
             return None
 
-        # ----------------------------------------------------
-        # Сохраняем имя
-        # ----------------------------------------------------
-
+        # Обновляем display_name.
         user.display_name = display_name
 
+        # Сохраняем изменение.
         await session.commit()
+
+        # Получаем актуальное состояние объекта.
         await session.refresh(user)
 
         return user
