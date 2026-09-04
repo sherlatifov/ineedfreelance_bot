@@ -130,6 +130,11 @@ class FreelancerProfile(Base):
         nullable=True,
     )
 
+    currency: Mapped[str | None] = mapped_column(
+        String(10),
+        nullable=True,
+    )
+
     # ---------------------------------------------------------
     # ОПЫТ
     # ---------------------------------------------------------

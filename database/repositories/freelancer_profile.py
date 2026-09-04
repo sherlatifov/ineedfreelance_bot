@@ -186,3 +186,60 @@ async def update_freelancer_bio(
         await session.refresh(profile)
 
         return profile
+
+async def update_freelancer_rate(
+    user_id: int,
+    hourly_rate: int,
+    currency: str,
+) -> FreelancerProfile | None:
+    """
+    Изменяет почасовую ставку фрилансера.
+
+    user_id:
+        ID пользователя из users.id.
+
+    hourly_rate:
+        Стоимость одного часа.
+
+    currency:
+        Валюта ставки.
+
+    Например:
+
+        hourly_rate = 50
+        currency = "EUR"
+
+    В профиле будет отображаться:
+
+        50 € / час
+    """
+
+    async with SessionLocal() as session:
+
+        # Ищем профиль пользователя.
+        result = await session.execute(
+            select(FreelancerProfile).where(
+                FreelancerProfile.user_id == user_id
+            )
+        )
+
+        profile = result.scalar_one_or_none()
+
+        # Если профиль не найден —
+        # ничего не обновляем.
+        if profile is None:
+            return None
+
+        # Обновляем стоимость.
+        profile.hourly_rate = hourly_rate
+
+        # Обновляем валюту.
+        profile.currency = currency
+
+        # Сохраняем изменения.
+        await session.commit()
+
+        # Получаем актуальное состояние объекта.
+        await session.refresh(profile)
+
+        return profile

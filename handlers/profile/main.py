@@ -46,8 +46,25 @@ async def build_freelancer_profile_text(
 
     skills = profile.skills or "Пока не указаны"
 
-    if profile.hourly_rate is not None:
-        rate = f"{profile.hourly_rate} € / час"
+    if (
+    profile.hourly_rate is not None
+    and profile.currency
+):
+    currency_symbols = {
+        "EUR": "€",
+        "USD": "$",
+        "GBP": "£",
+    }
+
+    currency_symbol = currency_symbols.get(
+        profile.currency,
+        profile.currency,
+    )
+
+    rate = (
+        f"{profile.hourly_rate} "
+        f"{currency_symbol} / час"
+    )
     else:
         rate = "Пока не указана"
 
