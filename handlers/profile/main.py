@@ -49,7 +49,7 @@ async def build_freelancer_profile_text(
     if (
     profile.hourly_rate is not None
     and profile.currency
-):
+    ):
     currency_symbols = {
         "EUR": "€",
         "USD": "$",
