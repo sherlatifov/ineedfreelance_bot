@@ -5,7 +5,7 @@ from database.repositories.freelancer_profile import (
     get_or_create_freelancer_profile,
 )
 from database.repositories.user import get_user
-from keyboards.profile import freelancer_profile_keyboard
+from keyboards.freelancer_profile import freelancer_profile_keyboard
 
 
 router = Router()
