@@ -2,7 +2,7 @@ from aiogram import F, Router
 from aiogram.types import CallbackQuery
 
 from database.repositories.user import get_user
-from keyboards.freelancer import freelancer_menu
+from keyboards.freelancer_menu import freelancer_menu
 from locales import t
 
 
