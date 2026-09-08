@@ -8,6 +8,7 @@ async def get_client_profile(
     user_id: int,
 ) -> ClientProfile | None:
     """Получает профиль клиента по users.id."""
+
     async with SessionLocal() as session:
         result = await session.execute(
             select(ClientProfile).where(
@@ -22,6 +23,7 @@ async def get_or_create_client_profile(
     user_id: int,
 ) -> ClientProfile:
     """Получает профиль клиента или создаёт его."""
+
     async with SessionLocal() as session:
         result = await session.execute(
             select(ClientProfile).where(

@@ -10,34 +10,31 @@ from database.repositories.user import (
     update_display_name,
 )
 from handlers.profile.main import build_freelancer_profile_text
-
-
-router = Router()
+from handlers.client.profile.main import build_client_profile_text
 
 logger = logging.getLogger(__name__)
 
+router = Router()
+
 
 class NameStates(StatesGroup):
-    """
-    Состояния для изменения имени пользователя.
-    """
-
     waiting_for_name = State()
 
 
-@router.callback_query(F.data == "profile:edit_name")
+@router.callback_query(
+    F.data.in_({
+        "profile:edit_name",
+        "freelancer:profile:name",
+        "client:profile:name",
+    })
+)
 async def edit_profile_name(
     callback: CallbackQuery,
     state: FSMContext,
 ):
-    """
-    Начинает процесс изменения имени.
-    """
+    """Начинает изменение общего display_name."""
 
-    # Получаем пользователя по Telegram ID.
-    user = await get_user(
-        callback.from_user.id,
-    )
+    user = await get_user(callback.from_user.id)
 
     if user is None:
         await callback.answer(
@@ -46,7 +43,6 @@ async def edit_profile_name(
         )
         return
 
-    # Проверяем, что исходное сообщение существует.
     if callback.message is None:
         await callback.answer(
             "Не удалось открыть редактирование.",
@@ -54,24 +50,22 @@ async def edit_profile_name(
         )
         return
 
-    # Сохраняем ID сообщения профиля.
-    #
-    # После ввода имени именно это сообщение
-    # мы снова обновим.
-    await state.update_data(
-        profile_message_id=callback.message.message_id,
+    # Определяем, откуда пользователь пришёл.
+    source = (
+        "client"
+        if callback.data == "client:profile:name"
+        else "freelancer"
     )
 
-    # Переводим пользователя в состояние
-    # ожидания нового имени.
-    await state.set_state(
-        NameStates.waiting_for_name,
+    await state.update_data(
+        profile_message_id=callback.message.message_id,
+        profile_source=source,
     )
+
+    await state.set_state(NameStates.waiting_for_name)
 
     await callback.answer()
 
-    # Меняем текущее сообщение профиля
-    # на сообщение с инструкцией.
     await callback.message.edit_text(
         text=(
             "✏️ <b>Изменение имени</b>\n\n"
@@ -90,19 +84,7 @@ async def process_profile_name(
     message: Message,
     state: FSMContext,
 ):
-    """
-    Получает новое имя пользователя
-    и сохраняет его в users.display_name.
-    """
-
-    logger.info(
-        "Получено новое имя от пользователя %s",
-        message.from_user.id,
-    )
-
-    # ---------------------------------------------------------
-    # ПРОВЕРЯЕМ ТЕКСТ
-    # ---------------------------------------------------------
+    """Сохраняет новый display_name."""
 
     if not message.text:
         await message.answer(
@@ -111,10 +93,6 @@ async def process_profile_name(
         return
 
     name = message.text.strip()
-
-    # ---------------------------------------------------------
-    # ПРОВЕРЯЕМ ДЛИНУ
-    # ---------------------------------------------------------
 
     if len(name) < 2:
         await message.answer(
@@ -127,28 +105,6 @@ async def process_profile_name(
             "❌ Имя не должно превышать 100 символов."
         )
         return
-
-    # ---------------------------------------------------------
-    # ПОЛУЧАЕМ ПОЛЬЗОВАТЕЛЯ
-    # ---------------------------------------------------------
-
-    # Здесь message.from_user.id —
-    # именно Telegram ID.
-    user = await get_user(
-        message.from_user.id,
-    )
-
-    if user is None:
-        await state.clear()
-
-        await message.answer(
-            "❌ Пользователь не найден."
-        )
-        return
-
-    # ---------------------------------------------------------
-    # СОХРАНЯЕМ ИМЯ
-    # ---------------------------------------------------------
 
     updated_user = await update_display_name(
         telegram_id=message.from_user.id,
@@ -163,66 +119,53 @@ async def process_profile_name(
         )
         return
 
-    logger.info(
-        "Имя успешно изменено: user_id=%s display_name=%r",
-        user.id,
-        name,
-    )
-
-    # ---------------------------------------------------------
-    # ПОЛУЧАЕМ ID СТАРОГО СООБЩЕНИЯ
-    # ---------------------------------------------------------
-
     data = await state.get_data()
 
     profile_message_id = data.get(
         "profile_message_id"
     )
 
-    # FSM больше не нужен.
-    await state.clear()
+    profile_source = data.get(
+        "profile_source",
+        "freelancer",
+    )
 
-    # ---------------------------------------------------------
-    # УДАЛЯЕМ СООБЩЕНИЕ ПОЛЬЗОВАТЕЛЯ
-    # ---------------------------------------------------------
+    await state.clear()
 
     try:
         await message.delete()
     except Exception:
-        logger.exception(
+        logger.warning(
             "Не удалось удалить сообщение с новым именем"
         )
 
     # ---------------------------------------------------------
-    # СТРОИМ ОБНОВЛЁННЫЙ ПРОФИЛЬ
+    # ВОЗВРАЩАЕМ НУЖНЫЙ ПРОФИЛЬ
     # ---------------------------------------------------------
 
-    result = await build_freelancer_profile_text(
-        telegram_id=message.from_user.id,
-    )
+    if profile_source == "client":
+        result = await build_client_profile_text(
+            telegram_id=message.from_user.id,
+        )
+    else:
+        result = await build_freelancer_profile_text(
+            telegram_id=message.from_user.id,
+        )
 
     if result is None:
         await message.answer(
-            "✅ Имя успешно изменено.\n\n"
-            "Но не удалось обновить отображение профиля."
+            "✅ Имя успешно изменено."
         )
         return
 
     profile_text, keyboard = result
 
-    # Добавляем уведомление непосредственно
-    # в сообщение профиля.
     final_text = (
         "✅ <b>Имя успешно изменено!</b>\n\n"
-        + profile_text
+        f"{profile_text}"
     )
 
-    # ---------------------------------------------------------
-    # ОБНОВЛЯЕМ СТАРОЕ СООБЩЕНИЕ ПРОФИЛЯ
-    # ---------------------------------------------------------
-
     if profile_message_id:
-
         try:
             await message.bot.edit_message_text(
                 chat_id=message.chat.id,
@@ -231,22 +174,12 @@ async def process_profile_name(
                 parse_mode="HTML",
                 reply_markup=keyboard,
             )
-
-            logger.info(
-                "Профиль успешно обновлён после изменения имени"
-            )
-
             return
 
         except Exception:
-            logger.exception(
-                "Не удалось обновить сообщение профиля "
-                "после изменения имени"
+            logger.warning(
+                "Не удалось обновить сообщение профиля"
             )
-
-    # ---------------------------------------------------------
-    # FALLBACK
-    # ---------------------------------------------------------
 
     await message.answer(
         text=final_text,
