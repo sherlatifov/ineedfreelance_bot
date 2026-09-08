@@ -7,8 +7,8 @@ from database.repositories.user import (
     update_role,
 )
 
-from keyboards.freelancer import freelancer_menu
-from keyboards.client import client_menu
+from keyboards.freelancer_menu import freelancer_menu
+from keyboards.client_menu import client_menu
 
 from locales import t
 
