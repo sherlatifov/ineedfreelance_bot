@@ -79,3 +79,12 @@ class User(Base):
         uselist=False, 
         cascade="all, delete-orphan", 
         )
+    
+    client_profile: Mapped[
+        "ClientProfile | None"
+        ] = relationship(
+        "ClientProfile",
+        back_populates="user",
+        uselist=False,
+        cascade="all, delete-orphan",
+        )

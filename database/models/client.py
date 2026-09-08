@@ -38,3 +38,8 @@ class ClientProfile(Base):
         String(500),
         nullable=True,
     )
+
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="client_profile",
+    )
