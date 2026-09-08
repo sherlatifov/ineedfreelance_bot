@@ -62,7 +62,7 @@ def client_menu(
 
     builder.button(
         text=t(language, "profile"),
-        callback_data="profile",
+        callback_data="client:profile",
     )
 
     # ========================================================
