@@ -46,7 +46,7 @@ def client_profile_keyboard(
             language,
             "back",
         ),
-        callback_data="client:profile:back",
+        callback_data="profile:back",
     )
 
     builder.adjust(1)

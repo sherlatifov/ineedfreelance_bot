@@ -1,3 +1,18 @@
+from datetime import datetime
+
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
+from sqlalchemy.orm import Mapped, mapped_column
+
+from .base import Base
+
 class Job(Base):
     __tablename__ = "jobs"
 
@@ -28,32 +43,26 @@ class Job(Base):
         nullable=False,
     )
 
-    budget_min: Mapped[int | None] = mapped_column(
-        Integer,
-        nullable=True,
-    )
-
-    budget_max: Mapped[int | None] = mapped_column(
-        Integer,
+    budget: Mapped[float | None] = mapped_column(
+        Numeric(12, 2),
         nullable=True,
     )
 
     currency: Mapped[str] = mapped_column(
-        String(3),
-        default="USD",
+        String(10),
         nullable=False,
     )
 
-    status: Mapped[str] = mapped_column(
+    deadline: Mapped[str] = mapped_column(
         String(50),
+        nullable=False,
+    )
+    
+    status: Mapped[str] = mapped_column(
+        String(30),
         default="draft",
         nullable=False,
         index=True,
-    )
-
-    deadline: Mapped[date | None] = mapped_column(
-        DateTime,
-        nullable=True,
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -69,17 +78,7 @@ class Job(Base):
         nullable=False,
     )
 
-    client: Mapped["User"] = relationship(
-        "User",
-    )
-
-    category: Mapped["Category"] = relationship(
-        "Category",
-        back_populates="jobs",
-    )
-
-    skills: Mapped[list["Skill"]] = relationship(
-        "Skill",
-        secondary=job_skills,
-        back_populates="jobs",
+    published_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True,
     )
