@@ -1,23 +1,28 @@
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from database.repositories.category import get_categories, get_category
 from database.repositories.job import create_job
 
+from handlers.client.jobs.states import CreateJobStates
+
 from keyboards.categories import categories_keyboard
 from keyboards.job import (
+    budget_keyboard,
     currency_keyboard,
     deadline_keyboard,
     files_keyboard,
     preview_keyboard,
-    budget_keyboard,
 )
-
-from handlers.client.jobs.states import CreateJobStates
 
 
 router = Router()
+
+
+# =========================================================
+# НАЧАЛО СОЗДАНИЯ РАБОТЫ
+# =========================================================
 
 @router.message(F.text == "Создать заказ")
 async def start_create_job(
@@ -46,7 +51,12 @@ async def start_create_job(
         ),
     )
 
-    @router.callback_query(
+
+# =========================================================
+# ВЫБОР КАТЕГОРИИ
+# =========================================================
+
+@router.callback_query(
     CreateJobStates.choosing_category,
     F.data.startswith("category:")
 )
@@ -85,11 +95,22 @@ async def choose_category(
 
     await callback.answer()
 
-    @router.message(CreateJobStates.entering_title)
+
+# =========================================================
+# НАЗВАНИЕ
+# =========================================================
+
+@router.message(CreateJobStates.entering_title)
 async def enter_title(
     message: Message,
     state: FSMContext,
 ):
+    if not message.text:
+        await message.answer(
+            "❌ Пожалуйста, отправьте название текстом."
+        )
+        return
+
     title = message.text.strip()
 
     if len(title) < 5:
@@ -121,11 +142,22 @@ async def enter_title(
         "особые требования."
     )
 
-    @router.message(CreateJobStates.entering_description)
+
+# =========================================================
+# ОПИСАНИЕ
+# =========================================================
+
+@router.message(CreateJobStates.entering_description)
 async def enter_description(
     message: Message,
     state: FSMContext,
 ):
+    if not message.text:
+        await message.answer(
+            "❌ Пожалуйста, отправьте описание текстом."
+        )
+        return
+
     description = message.text.strip()
 
     if len(description) < 20:
@@ -147,15 +179,26 @@ async def enter_description(
         "💰 Введите бюджет работы.\n\n"
         "Например:\n"
         "<code>500</code>\n\n"
-        "Если бюджет договорной — нажмите "
-        "«Договорной» на следующем шаге."
+        "Или выберите «Договорной».",
+        reply_markup=budget_keyboard(),
     )
+
+
+# =========================================================
+# БЮДЖЕТ
+# =========================================================
 
 @router.message(CreateJobStates.entering_budget)
 async def enter_budget(
     message: Message,
     state: FSMContext,
 ):
+    if not message.text:
+        await message.answer(
+            "❌ Введите бюджет числом."
+        )
+        return
+
     text = message.text.strip().replace(",", ".")
 
     try:
@@ -188,30 +231,10 @@ async def enter_budget(
         reply_markup=currency_keyboard(),
     )
 
-@router.callback_query(
-    CreateJobStates.choosing_currency,
-    F.data.startswith("job_currency:")
-)
-async def choose_currency(
-    callback: CallbackQuery,
-    state: FSMContext,
-):
-    currency = callback.data.split(":")[1]
 
-    await state.update_data(
-        currency=currency
-    )
-
-    await state.set_state(
-        CreateJobStates.choosing_deadline
-    )
-
-    await callback.message.edit_text(
-        "⏳ <b>Какой срок выполнения?</b>",
-        reply_markup=deadline_keyboard(),
-    )
-
-    await callback.answer()
+# =========================================================
+# ДОГОВОРНОЙ БЮДЖЕТ
+# =========================================================
 
 @router.callback_query(
     CreateJobStates.entering_budget,
@@ -238,6 +261,41 @@ async def budget_negotiable(
 
     await callback.answer()
 
+
+# =========================================================
+# ВЫБОР ВАЛЮТЫ
+# =========================================================
+
+@router.callback_query(
+    CreateJobStates.choosing_currency,
+    F.data.startswith("job_currency:")
+)
+async def choose_currency(
+    callback: CallbackQuery,
+    state: FSMContext,
+):
+    currency = callback.data.split(":")[1]
+
+    await state.update_data(
+        currency=currency
+    )
+
+    await state.set_state(
+        CreateJobStates.choosing_deadline
+    )
+
+    await callback.message.edit_text(
+        "⏳ <b>Какой срок выполнения?</b>",
+        reply_markup=deadline_keyboard(),
+    )
+
+    await callback.answer()
+
+
+# =========================================================
+# СРОК — ДОГОВОРНОЙ
+# =========================================================
+
 @router.callback_query(
     CreateJobStates.choosing_deadline,
     F.data == "job_deadline:negotiable"
@@ -255,13 +313,20 @@ async def deadline_negotiable(
     )
 
     await callback.message.edit_text(
-        "📎 <b>Добавьте файлы</b>, если они нужны для работы.\n\n"
+        "📎 <b>Добавьте файлы</b>, если они нужны "
+        "для работы.\n\n"
         "Например: ТЗ, изображения, документы.\n\n"
-        "Если файлы не нужны — нажмите «Пропустить».",
+        "Если файлы не нужны — нажмите "
+        "«Пропустить».",
         reply_markup=files_keyboard(),
     )
 
     await callback.answer()
+
+
+# =========================================================
+# СРОК — УКАЗАТЬ ВРУЧНУЮ
+# =========================================================
 
 @router.callback_query(
     CreateJobStates.choosing_deadline,
@@ -271,10 +336,6 @@ async def deadline_custom(
     callback: CallbackQuery,
     state: FSMContext,
 ):
-    await state.update_data(
-        waiting_for_deadline=True
-    )
-
     await callback.message.edit_text(
         "📅 Введите срок выполнения.\n\n"
         "Например:\n"
@@ -285,11 +346,18 @@ async def deadline_custom(
 
     await callback.answer()
 
+
 @router.message(CreateJobStates.choosing_deadline)
 async def enter_deadline(
     message: Message,
     state: FSMContext,
 ):
+    if not message.text:
+        await message.answer(
+            "❌ Укажите срок текстом."
+        )
+        return
+
     deadline = message.text.strip()
 
     if len(deadline) < 2:
@@ -312,6 +380,11 @@ async def enter_deadline(
         reply_markup=files_keyboard(),
     )
 
+
+# =========================================================
+# ФАЙЛЫ — ПОКА ПРОПУСТИТЬ
+# =========================================================
+
 @router.callback_query(
     CreateJobStates.uploading_files,
     F.data == "job_files:skip"
@@ -324,13 +397,44 @@ async def skip_files(
         CreateJobStates.preview
     )
 
+    await show_preview(
+        callback.message,
+        state,
+        edit=True,
+    )
+
+    await callback.answer()
+
+
+# =========================================================
+# ПРЕДПРОСМОТР
+# =========================================================
+
+async def show_preview(
+    message: Message,
+    state: FSMContext,
+    edit: bool = False,
+):
     data = await state.get_data()
 
-    budget_text = (
-        "Договорной"
-        if data.get("budget") is None
-        else f"{data['budget']} {data.get('currency', '')}"
-    )
+    if data.get("budget") is None:
+        budget_text = "Договорной"
+    else:
+        currency_names = {
+            "USD": "USD",
+            "EUR": "EUR",
+            "RUB": "RUB",
+            "STARS": "⭐ Stars",
+        }
+
+        currency = currency_names.get(
+            data.get("currency"),
+            data.get("currency", ""),
+        )
+
+        budget_text = (
+            f"{data['budget']} {currency}"
+        )
 
     text = (
         "📋 <b>Предпросмотр работы</b>\n\n"
@@ -353,27 +457,21 @@ async def skip_files(
         "📎 <b>Файлы:</b> отсутствуют"
     )
 
-    await callback.message.edit_text(
-        text,
-        reply_markup=preview_keyboard(),
-    )
+    if edit:
+        await message.edit_text(
+            text,
+            reply_markup=preview_keyboard(),
+        )
+    else:
+        await message.answer(
+            text,
+            reply_markup=preview_keyboard(),
+        )
 
-    await callback.answer()
 
-@router.callback_query(
-    F.data == "job_create:cancel"
-)
-async def cancel_create_job(
-    callback: CallbackQuery,
-    state: FSMContext,
-):
-    await state.clear()
-
-    await callback.message.edit_text(
-        "❌ Создание работы отменено."
-    )
-
-    await callback.answer()
+# =========================================================
+# ОПУБЛИКОВАТЬ
+# =========================================================
 
 @router.callback_query(
     CreateJobStates.preview,
@@ -402,6 +500,26 @@ async def publish_job(
         f"🆔 Номер работы: <code>#{job.id}</code>\n"
         f"📝 {job.title}\n\n"
         "Теперь её смогут найти фрилансеры."
+    )
+
+    await callback.answer()
+
+
+# =========================================================
+# ОТМЕНА
+# =========================================================
+
+@router.callback_query(
+    F.data == "job_create:cancel"
+)
+async def cancel_create_job(
+    callback: CallbackQuery,
+    state: FSMContext,
+):
+    await state.clear()
+
+    await callback.message.edit_text(
+        "❌ Создание работы отменено."
     )
 
     await callback.answer()
