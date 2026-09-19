@@ -1,7 +1,6 @@
 from datetime import datetime
 
 from sqlalchemy import (
-    BigInteger,
     DateTime,
     ForeignKey,
     Integer,
@@ -11,12 +10,14 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base
+from database.models.base import Base
+
 
 class Job(Base):
     __tablename__ = "jobs"
 
     id: Mapped[int] = mapped_column(
+        Integer,
         primary_key=True,
         autoincrement=True,
     )
@@ -34,7 +35,7 @@ class Job(Base):
     )
 
     title: Mapped[str] = mapped_column(
-        String(255),
+        String(200),
         nullable=False,
     )
 
@@ -48,16 +49,16 @@ class Job(Base):
         nullable=True,
     )
 
-    currency: Mapped[str] = mapped_column(
-        String(10),
-        nullable=False,
+    currency: Mapped[str | None] = mapped_column(
+        String(20),
+        nullable=True,
     )
 
-    deadline: Mapped[str] = mapped_column(
-        String(50),
-        nullable=False,
+    deadline: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
     )
-    
+
     status: Mapped[str] = mapped_column(
         String(30),
         default="draft",
@@ -76,9 +77,4 @@ class Job(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
         nullable=False,
-    )
-
-    published_at: Mapped[datetime | None] = mapped_column(
-        DateTime,
-        nullable=True,
     )
