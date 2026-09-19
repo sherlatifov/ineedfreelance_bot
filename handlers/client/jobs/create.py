@@ -4,6 +4,7 @@ from aiogram.types import CallbackQuery, Message
 
 from database.repositories.category import get_categories, get_category
 from database.repositories.job import create_job
+from database.repositories.user import get_user
 
 from handlers.client.jobs.states import CreateJobStates
 
@@ -485,8 +486,20 @@ async def publish_job(
 ):
     data = await state.get_data()
 
+    # Получаем нашего пользователя по Telegram ID
+    user = await get_user(callback.from_user.id)
+
+    if user is None:
+        await callback.answer(
+            "❌ Пользователь не найден.",
+            show_alert=True,
+        )
+        return
+
+    # В jobs.client_id должен записываться
+    # внутренний users.id, а не Telegram ID
     job = await create_job(
-        client_id=callback.from_user.id,
+        client_id=user.id,
         category_id=data["category_id"],
         title=data["title"],
         description=data["description"],
