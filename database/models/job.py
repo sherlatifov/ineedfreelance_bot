@@ -2,6 +2,7 @@ from datetime import datetime
 
 from sqlalchemy import (
     DateTime,
+    BigInteger,
     ForeignKey,
     Integer,
     Numeric,
@@ -23,6 +24,7 @@ class Job(Base):
     )
 
     client_id: Mapped[int] = mapped_column(
+        BigInteger,
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True,
