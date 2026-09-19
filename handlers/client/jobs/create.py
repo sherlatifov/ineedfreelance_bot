@@ -24,9 +24,9 @@ router = Router()
 # НАЧАЛО СОЗДАНИЯ РАБОТЫ
 # =========================================================
 
-@router.message(F.text == "Создать заказ")
+@router.callback_query(F.data == "client:create_project")
 async def start_create_job(
-    message: Message,
+    callback: CallbackQuery,
     state: FSMContext,
 ):
     categories = await get_categories()
@@ -43,13 +43,15 @@ async def start_create_job(
         CreateJobStates.choosing_category
     )
 
-    await message.answer(
+    await callback.message.edit_text(
         "📂 <b>Выберите категорию работы:</b>",
+        parse_mode="HTML",
         reply_markup=categories_keyboard(
             categories,
             language="ru",
         ),
     )
+    await callback.answer()
 
 
 # =========================================================
