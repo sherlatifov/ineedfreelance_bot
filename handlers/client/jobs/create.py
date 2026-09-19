@@ -175,14 +175,14 @@ async def enter_description(
     )
 
     await state.set_state(
-        CreateJobStates.entering_budget
+        CreateJobStates.choosing_currency
     )
 
     await message.answer(
-        "💰 Введите бюджет работы.\n\n"
-        "Например:\n"
-        "<code>500</code>\n\n"
+        "💰 Бюджет работы.\n\n"
+        "Выберите валюту:",
         "Или выберите «Договорной».",
+        parse_mode="HTML",
         reply_markup=budget_keyboard(),
     )
 
@@ -198,7 +198,7 @@ async def enter_budget(
 ):
     if not message.text:
         await message.answer(
-            "❌ Введите бюджет числом."
+            "❌ Введите сумму числом."
         )
         return
 
@@ -208,16 +208,16 @@ async def enter_budget(
         budget = float(text)
     except ValueError:
         await message.answer(
-            "❌ Введите бюджет числом.\n\n"
-            "Например: <code>500</code>\n\n"
-            "Или выберите «Договорной».",
-            reply_markup=budget_keyboard(),
+            "❌ Неверная сумма.\n\n"
+            "Введите число, например:\n"
+            "<code>500</code>",
+            parse_mode="HTML",
         )
         return
 
     if budget <= 0:
         await message.answer(
-            "❌ Бюджет должен быть больше нуля."
+            "❌ Сумма должна быть больше нуля."
         )
         return
 
@@ -226,21 +226,21 @@ async def enter_budget(
     )
 
     await state.set_state(
-        CreateJobStates.choosing_currency
+        CreateJobStates.choosing_deadline
     )
 
     await message.answer(
-        "💵 Выберите валюту:",
-        reply_markup=currency_keyboard(),
+        "⏳ <b>Какой срок выполнения?</b>",
+        parse_mode="HTML",
+        reply_markup=deadline_keyboard(),
     )
-
 
 # =========================================================
 # ДОГОВОРНОЙ БЮДЖЕТ
 # =========================================================
 
 @router.callback_query(
-    CreateJobStates.entering_budget,
+    CreateJobStates.choosing_currency,
     F.data == "job_budget:negotiable"
 )
 async def budget_negotiable(
@@ -279,17 +279,31 @@ async def choose_currency(
 ):
     currency = callback.data.split(":")[1]
 
+    currency_names = {
+        "USD": "🇺🇸 USD",
+        "EUR": "🇪🇺 EUR",
+        "RUB": "🇷🇺 RUB",
+        "STARS": "⭐ Telegram Stars",
+    }
+
+    currency_name = currency_names.get(
+        currency,
+        currency,
+    )
+
     await state.update_data(
         currency=currency
     )
 
     await state.set_state(
-        CreateJobStates.choosing_deadline
+        CreateJobStates.entering_budget
     )
 
     await callback.message.edit_text(
-        "⏳ <b>Какой срок выполнения?</b>",
-        reply_markup=deadline_keyboard(),
+        f"💰 <b>Бюджет: {currency_name}</b>\n\n"
+        "Введите сумму.\n\n"
+        "Например: <code>500</code>",
+        parse_mode="HTML",
     )
 
     await callback.answer()

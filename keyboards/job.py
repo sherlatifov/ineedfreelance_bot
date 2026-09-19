@@ -6,19 +6,6 @@ def budget_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     builder.button(
-        text="🤝 Договорной",
-        callback_data="job_budget:negotiable",
-    )
-
-    builder.adjust(1)
-
-    return builder.as_markup()
-
-
-def currency_keyboard() -> InlineKeyboardMarkup:
-    builder = InlineKeyboardBuilder()
-
-    builder.button(
         text="🇺🇸 USD",
         callback_data="job_currency:USD",
     )
@@ -38,10 +25,14 @@ def currency_keyboard() -> InlineKeyboardMarkup:
         callback_data="job_currency:STARS",
     )
 
+    builder.button(
+        text="🤝 Договорной",
+        callback_data="job_budget:negotiable",
+    )
+
     builder.adjust(2)
 
     return builder.as_markup()
-
 
 def deadline_keyboard() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
