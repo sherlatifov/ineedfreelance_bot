@@ -179,7 +179,7 @@ async def enter_description(
 
     await message.answer(
         "💰 Бюджет работы.\n\n"
-        "Выберите валюту:",
+        "Выберите валюту: \n\n"
         "Или выберите «Договорной».",
         parse_mode="HTML",
         reply_markup=budget_keyboard(),
