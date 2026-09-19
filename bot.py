@@ -5,10 +5,12 @@ from aiogram import Bot, Dispatcher
 
 from config import BOT_TOKEN
 from database.database import init_db
+from database.seed import seed_categories
 from handlers.start import router
 from handlers.mode import router as mode_router
 from handlers.profile import router as profile_router
 from handlers.client import router as client_router
+from handlers.categories import router as categories_router
 
 
 logging.basicConfig(
@@ -22,6 +24,7 @@ async def main():
     logging.info("🚀 Запускаем FreelanceJob...")
     # Создаём таблицы
     await init_db()
+    await seed_categories()
     logging.info("База данных готова")
 
     bot = Bot(
@@ -35,6 +38,7 @@ async def main():
     dp.include_router(mode_router)
     dp.include_router(profile_router)
     dp.include_router(client_router)
+    dp.include_router(categories_router)
 
     logging.info("🤖 Бот успешно запущен!")
 

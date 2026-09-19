@@ -3,44 +3,49 @@ from datetime import datetime
 from sqlalchemy import Boolean, DateTime, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
-from .base import Base
+from database.models.base import Base
 
 
 class Category(Base):
     __tablename__ = "categories"
 
     id: Mapped[int] = mapped_column(
+        Integer,
         primary_key=True,
-        autoincrement=True,
+        autoincrement=True
     )
 
-    name: Mapped[str] = mapped_column(
-        String(255),
-        nullable=False,
-        unique=True,
+    name_ru: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
+    )
+
+    name_en: Mapped[str] = mapped_column(
+        String(100),
+        nullable=False
     )
 
     slug: Mapped[str] = mapped_column(
         String(100),
-        nullable=False,
         unique=True,
-        index=True,
+        nullable=False,
+        index=True
     )
 
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
-        nullable=False,
+        nullable=False
     )
 
     sort_order: Mapped[int] = mapped_column(
         Integer,
         default=0,
-        nullable=False,
+        nullable=False
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
-        nullable=False,
+        nullable=False
     )
