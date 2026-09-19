@@ -1,9 +1,9 @@
 import html
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
-from aiogram.exceptions import TelegramBadRequest
 
 from database.repositories.category import get_categories, get_category
 from database.repositories.job import create_job
@@ -31,8 +31,8 @@ router = Router()
 
 async def delete_user_message(message: Message):
     """
-    Удаляем сообщение пользователя после обработки.
-    Если удалить нельзя — просто продолжаем работу.
+    Удаляет сообщение пользователя.
+    Если удалить его невозможно — продолжаем работу.
     """
     try:
         await message.delete()
@@ -47,10 +47,20 @@ async def edit_form(
     reply_markup=None,
 ):
     """
-    Редактирует одно и то же сообщение формы.
+    Редактирует одно и то же сообщение бота,
+    которое используется как форма создания работы.
     """
 
     data = await state.get_data()
+
+    form_message_id = data.get("form_message_id")
+
+    if not form_message_id:
+        return
+
+    # -----------------------------------------------------
+    # ДАННЫЕ
+    # -----------------------------------------------------
 
     category = data.get("category_name")
     title = data.get("title")
@@ -60,8 +70,10 @@ async def edit_form(
     currency = data.get("currency")
     deadline = data.get("deadline")
 
+    files = data.get("files", [])
+
     # -----------------------------------------------------
-    # Категория
+    # КАТЕГОРИЯ
     # -----------------------------------------------------
 
     category_text = (
@@ -71,7 +83,7 @@ async def edit_form(
     )
 
     # -----------------------------------------------------
-    # Название
+    # НАЗВАНИЕ
     # -----------------------------------------------------
 
     title_text = (
@@ -81,7 +93,7 @@ async def edit_form(
     )
 
     # -----------------------------------------------------
-    # Описание
+    # ОПИСАНИЕ
     # -----------------------------------------------------
 
     description_text = (
@@ -91,15 +103,13 @@ async def edit_form(
     )
 
     # -----------------------------------------------------
-    # Бюджет
+    # БЮДЖЕТ
     # -----------------------------------------------------
 
-    if budget is None:
-        if currency == "NEGOTIABLE":
-            budget_text = "Договорной"
-        else:
-            budget_text = "—"
-    else:
+    if currency == "NEGOTIABLE":
+        budget_text = "Договорной"
+
+    elif budget is not None:
         currency_names = {
             "USD": "🇺🇸 USD",
             "EUR": "🇪🇺 EUR",
@@ -117,8 +127,11 @@ async def edit_form(
             f"{currency_name}"
         )
 
+    else:
+        budget_text = "—"
+
     # -----------------------------------------------------
-    # Срок
+    # СРОК
     # -----------------------------------------------------
 
     deadline_text = (
@@ -128,10 +141,8 @@ async def edit_form(
     )
 
     # -----------------------------------------------------
-    # Файлы
+    # ФАЙЛЫ
     # -----------------------------------------------------
-
-    files = data.get("files", [])
 
     if files:
         files_text = f"{len(files)} файл(ов)"
@@ -158,51 +169,26 @@ async def edit_form(
     )
 
     try:
-        await message.edit_text(
-            text,
+        await message.bot.edit_message_text(
+            chat_id=message.chat.id,
+            message_id=form_message_id,
+            text=text,
             parse_mode="HTML",
             reply_markup=reply_markup,
         )
+
     except TelegramBadRequest as e:
-        # Например, если текст фактически не изменился
         if "message is not modified" not in str(e):
             raise
-
-
-async def edit_form_by_id(
-    message: Message,
-    state: FSMContext,
-    prompt: str,
-    reply_markup=None,
-):
-    """
-    Редактирует сохранённое сообщение формы.
-    """
-
-    data = await state.get_data()
-
-    form_message_id = data.get("form_message_id")
-
-    if not form_message_id:
-        return
-
-    # Используем bot напрямую, потому что здесь
-    # message — это уже сообщение пользователя.
-    await edit_form(
-        message=message.bot.get_message
-        if False
-        else message,
-        state=state,
-        prompt=prompt,
-        reply_markup=reply_markup,
-    )
 
 
 # =========================================================
 # НАЧАЛО СОЗДАНИЯ РАБОТЫ
 # =========================================================
 
-@router.callback_query(F.data == "client:create_project")
+@router.callback_query(
+    F.data == "client:create_project"
+)
 async def start_create_job(
     callback: CallbackQuery,
     state: FSMContext,
@@ -216,10 +202,11 @@ async def start_create_job(
         )
         return
 
+    # Очищаем старое состояние
     await state.clear()
 
-    # Запоминаем ID одного сообщения,
-    # которое будем использовать как форму.
+    # Сохраняем ID сообщения бота.
+    # Именно его будем редактировать дальше.
     await state.update_data(
         form_message_id=callback.message.message_id,
         files=[],
@@ -301,7 +288,9 @@ async def choose_category(
 # НАЗВАНИЕ
 # =========================================================
 
-@router.message(CreateJobStates.entering_title)
+@router.message(
+    CreateJobStates.entering_title
+)
 async def enter_title(
     message: Message,
     state: FSMContext,
@@ -309,20 +298,11 @@ async def enter_title(
     if not message.text:
         await delete_user_message(message)
 
-        data = await state.get_data()
-        form_message_id = data.get("form_message_id")
-
-        if form_message_id:
-            await message.bot.edit_message_text(
-                chat_id=message.chat.id,
-                message_id=form_message_id,
-                text=(
-                    "📝 <b>Создание работы</b>\n\n"
-                    "❌ Название нужно отправить текстом."
-                ),
-                parse_mode="HTML",
-            )
-
+        await edit_form(
+            message,
+            state,
+            "❌ <b>Название нужно отправить текстом.</b>",
+        )
         return
 
     title = message.text.strip()
@@ -373,7 +353,9 @@ async def enter_title(
 # ОПИСАНИЕ
 # =========================================================
 
-@router.message(CreateJobStates.entering_description)
+@router.message(
+    CreateJobStates.entering_description
+)
 async def enter_description(
     message: Message,
     state: FSMContext,
@@ -415,7 +397,8 @@ async def enter_description(
         message,
         state,
         "💰 <b>Выберите валюту бюджета:</b>\n\n"
-        "После выбора валюты бот попросит указать сумму.",
+        "После выбора валюты бот попросит указать сумму.\n\n"
+        "Или выберите <b>Договорной</b>.",
         reply_markup=budget_keyboard(),
     )
 
@@ -458,7 +441,8 @@ async def choose_currency(
         callback.message,
         state,
         f"💰 <b>Введите бюджет в {currency_name}:</b>\n\n"
-        "Например: <code>500</code>",
+        "Например:\n"
+        "<code>500</code>",
     )
 
     await callback.answer()
@@ -496,10 +480,12 @@ async def budget_negotiable(
 
 
 # =========================================================
-# БЮДЖЕТ
+# ВВОД БЮДЖЕТА
 # =========================================================
 
-@router.message(CreateJobStates.entering_budget)
+@router.message(
+    CreateJobStates.entering_budget
+)
 async def enter_budget(
     message: Message,
     state: FSMContext,
@@ -511,7 +497,8 @@ async def enter_budget(
             message,
             state,
             "❌ <b>Введите сумму числом.</b>\n\n"
-            "Например: <code>500</code>",
+            "Например:\n"
+            "<code>500</code>",
         )
         return
 
@@ -593,7 +580,7 @@ async def deadline_negotiable(
 
 
 # =========================================================
-# СРОК — УКАЗАТЬ ВРУЧНУЮ
+# СРОК — ВРУЧНУЮ
 # =========================================================
 
 @router.callback_query(
@@ -622,10 +609,12 @@ async def deadline_custom(
 
 
 # =========================================================
-# СРОК — ТЕКСТ
+# ВВОД СРОКА
 # =========================================================
 
-@router.message(CreateJobStates.choosing_deadline)
+@router.message(
+    CreateJobStates.choosing_deadline
+)
 async def enter_deadline(
     message: Message,
     state: FSMContext,
@@ -716,9 +705,10 @@ async def show_preview(
     # БЮДЖЕТ
     # -----------------------------------------------------
 
-    if data.get("budget") is None:
+    if data.get("currency") == "NEGOTIABLE":
         budget_text = "Договорной"
-    else:
+
+    elif data.get("budget") is not None:
         currency_names = {
             "USD": "USD",
             "EUR": "EUR",
@@ -735,6 +725,9 @@ async def show_preview(
             f"{data['budget']} {currency}"
         )
 
+    else:
+        budget_text = "—"
+
     # -----------------------------------------------------
     # ФАЙЛЫ
     # -----------------------------------------------------
@@ -747,7 +740,7 @@ async def show_preview(
         files_text = "отсутствуют"
 
     # -----------------------------------------------------
-    # ТЕКСТ
+    # ТЕКСТ ПРЕДПРОСМОТРА
     # -----------------------------------------------------
 
     text = (
@@ -829,7 +822,7 @@ async def publish_job(
 
 
 # =========================================================
-# ОТМЕНА
+# ОТМЕНА СОЗДАНИЯ
 # =========================================================
 
 @router.callback_query(
