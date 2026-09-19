@@ -11,7 +11,6 @@ from handlers.client.jobs.states import CreateJobStates
 from keyboards.categories import categories_keyboard
 from keyboards.job import (
     budget_keyboard,
-    currency_keyboard,
     deadline_keyboard,
     files_keyboard,
     preview_keyboard,
