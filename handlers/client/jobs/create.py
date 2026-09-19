@@ -34,9 +34,10 @@ async def start_create_job(
     categories = await get_categories()
 
     if not categories:
-        await message.answer(
+        await callback.message.answer(
             "❌ Категории пока не настроены."
         )
+        await callback.answer()
         return
 
     await state.clear()
@@ -528,7 +529,9 @@ async def publish_job(
     await callback.message.edit_text(
         "✅ <b>Работа опубликована!</b>\n\n"
         f"📝 {job.title}\n\n"
-        "Теперь её смогут найти фрилансеры."
+        "Теперь её смогут найти фрилансеры.",
+        parse_mode="HTML",
+        reply_markup=main_menu_keyboard(),
     )
 
     await callback.answer()
@@ -559,11 +562,26 @@ async def cancel_create_job(
 
 @router.callback_query(F.data == "client:main_menu")
 async def client_main_menu(callback: CallbackQuery):
+    user = await get_user(callback.from_user.id)
+
+    if user is None:
+        await callback.answer(
+            "❌ Пользователь не найден.",
+            show_alert=True,
+        )
+        return
+
+    language = user.language or "ru"
+    admin = user.is_admin
+
     await callback.message.edit_text(
         "👤 <b>Меню заказчика</b>\n\n"
         "Выберите действие:",
         parse_mode="HTML",
-        reply_markup=client_menu(),
+        reply_markup=client_menu(
+            language=language,
+            is_admin=admin,
+        ),
     )
 
     await callback.answer()
