@@ -12,6 +12,7 @@ from handlers.profile import router as profile_router
 from handlers.client import router as client_router
 from handlers.categories import router as categories_router
 from handlers.client.jobs import router as jobs_router
+from handlers.freelancer import router as freelancer_router
 
 logging.basicConfig(
     level=logging.INFO,
@@ -40,6 +41,7 @@ async def main():
     dp.include_router(client_router)
     dp.include_router(categories_router)
     dp.include_router(jobs_router)
+    dp.include_router(freelancer_router)
 
     logging.info("🤖 Бот успешно запущен!")
 
