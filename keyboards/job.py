@@ -96,3 +96,13 @@ def preview_keyboard() -> InlineKeyboardMarkup:
     builder.adjust(1)
 
     return builder.as_markup()
+
+def main_menu_keyboard() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="🏠 Главное меню",
+        callback_data="client:main_menu",
+    )
+
+    return builder.as_markup()

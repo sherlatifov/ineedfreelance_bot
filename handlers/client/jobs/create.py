@@ -9,11 +9,13 @@ from database.repositories.user import get_user
 from handlers.client.jobs.states import CreateJobStates
 
 from keyboards.categories import categories_keyboard
+from keyboards.client_menu import client_menu
 from keyboards.job import (
     budget_keyboard,
     deadline_keyboard,
     files_keyboard,
     preview_keyboard,
+    main_menu_keyboard,
 )
 
 
@@ -525,7 +527,6 @@ async def publish_job(
 
     await callback.message.edit_text(
         "✅ <b>Работа опубликована!</b>\n\n"
-        f"🆔 Номер работы: <code>#{job.id}</code>\n"
         f"📝 {job.title}\n\n"
         "Теперь её смогут найти фрилансеры."
     )
@@ -548,6 +549,21 @@ async def cancel_create_job(
 
     await callback.message.edit_text(
         "❌ Создание работы отменено."
+    )
+
+    await callback.answer()
+
+# =========================================================
+# Возвращение в главное меню
+# =========================================================
+
+@router.callback_query(F.data == "client:main_menu")
+async def client_main_menu(callback: CallbackQuery):
+    await callback.message.edit_text(
+        "👤 <b>Меню заказчика</b>\n\n"
+        "Выберите действие:",
+        parse_mode="HTML",
+        reply_markup=client_menu(),
     )
 
     await callback.answer()
