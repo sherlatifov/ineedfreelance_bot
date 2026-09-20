@@ -6,12 +6,11 @@ from keyboards.client_menu import client_menu
 from locales import t
 
 
-# Router навигации профиля.
 router = Router()
 
 
 # =============================================================
-# НАЗАД
+# НАЗАД ИЗ ПРОФИЛЯ КЛИЕНТА
 # =============================================================
 
 @router.callback_query(F.data == "client:profile:back")
@@ -20,26 +19,13 @@ async def client_profile_back(
 ):
     """
     Возвращает пользователя из профиля
-    обратно в меню фрилансера.
-
-    Сейчас:
-
-        Профиль
-           ↓
-        ⬅️ Назад
-           ↓
-        Меню фрилансера
-
-    Позже здесь можно будет реализовать
-    полноценную систему истории навигации.
+    обратно в меню заказчика.
     """
 
-    # Получаем пользователя.
     user = await get_user(
         callback.from_user.id,
     )
 
-    # Проверяем существование пользователя.
     if user is None:
         await callback.answer(
             "Пользователь не найден.",
@@ -47,32 +33,23 @@ async def client_profile_back(
         )
         return
 
-    # Получаем язык пользователя.
     language = user.language or "ru"
 
-    # Проверяем права администратора.
-    #
-    # Это важно, чтобы администратор
-    # продолжал видеть админ-панель.
     is_admin = user.is_admin
 
-    # Создаём меню фрилансера.
-    keyboard = freelancer_menu(
+    keyboard = client_menu(
         language=language,
         is_admin=is_admin,
     )
 
-    # Формируем текст меню.
     text = (
-        t(language, "freelancer_mode")
+        t(language, "client_mode")
         + "\n\n"
         + t(language, "choose_action")
     )
 
-    # Убираем индикатор загрузки Telegram.
     await callback.answer()
 
-    # Редактируем текущее сообщение.
     if callback.message:
         await callback.message.edit_text(
             text=text,
