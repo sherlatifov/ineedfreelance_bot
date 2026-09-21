@@ -116,6 +116,8 @@ def freelancer_jobs_keyboard(
                 text="➡️",
                 callback_data=f"freelancer_jobs:page:{category_id}:{page + 1}",
             )
+        builder.adjust(3)
+        
 
     builder.button(
         text="📂 Категории",
