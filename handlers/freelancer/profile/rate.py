@@ -15,7 +15,7 @@ from database.repositories.freelancer_profile import (
     update_freelancer_rate,
 )
 from database.repositories.user import get_user
-from handlers.profile.main import build_freelancer_profile_text
+from .main import build_freelancer_profile_text
 
 
 router = Router()

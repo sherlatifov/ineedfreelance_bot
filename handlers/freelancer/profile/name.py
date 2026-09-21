@@ -9,7 +9,7 @@ from database.repositories.user import (
     get_user,
     update_display_name,
 )
-from handlers.profile.main import build_freelancer_profile_text
+from .main import build_freelancer_profile_text
 from handlers.client.profile.main import build_client_profile_text
 
 logger = logging.getLogger(__name__)

@@ -5,7 +5,7 @@ SUPPORTED_LANGUAGES = {
     "ru": ru.TEXTS,
     "en": en.TEXTS,
 }
-
+DEFAULT_LANGUAGE = "ru"
 
 def get_language(language_code: str | None) -> str:
     """

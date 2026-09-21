@@ -10,7 +10,7 @@ from database.repositories.freelancer_profile import (
     update_freelancer_bio,
 )
 from database.repositories.user import get_user
-from handlers.profile.main import build_freelancer_profile_text
+from .main import build_freelancer_profile_text
 from utils.message import delete_message_safely
 
 
