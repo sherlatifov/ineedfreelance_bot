@@ -1,6 +1,6 @@
 from aiogram import Router
 
-from .main import router as jobs_router
+from .jobs import router as jobs_router
 
 router = Router()
 
