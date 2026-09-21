@@ -11,8 +11,6 @@ from database.repositories.freelancer_profile import (
 )
 from database.repositories.user import get_user
 from .main import build_freelancer_profile_text
-from utils.message import delete_message_safely
-
 
 # ============================================================
 # ROUTER
