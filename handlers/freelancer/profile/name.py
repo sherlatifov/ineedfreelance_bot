@@ -100,7 +100,7 @@ async def process_profile_name(
         )
         return
 
-    if len(name) > 100:
+    if len(name) > 50:
         await message.answer(
             "❌ Имя не должно превышать 100 символов."
         )

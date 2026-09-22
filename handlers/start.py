@@ -261,7 +261,7 @@ async def process_display_name(
     display_name = message.text.strip()
 
     # ========================================================
-    # Проверка минимальной длины
+    # Проверка минимальной
     # ========================================================
 
     if len(display_name) < 2:
@@ -286,7 +286,7 @@ async def process_display_name(
     # Проверка максимальной длины
     # ========================================================
 
-    if len(display_name) > 255:
+    if len(display_name) > 50:
 
         user = await get_user(
             message.from_user.id

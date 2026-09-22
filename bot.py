@@ -18,8 +18,8 @@ logging.basicConfig(
     format="%(asctime)s - %(levelname)s - %(message)s",
 )
 
-
 async def main():
+
     logging.info("🚀 Запуск FreelanceJob...")
 
     await init_db()
